@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "126506152270",
+    "firebase_url": "https://psyconnect-c68f9-default-rtdb.firebaseio.com",
+    "project_id": "psyconnect-c68f9",
+    "storage_bucket": "psyconnect-c68f9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:126506152270:android:59427ce61a5edffae5ee1f",
+        "android_client_info": {
+          "package_name": "com.example.psyconnectandroid"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "126506152270-e3jsa8dtdfegcfqcuaogkn0int28l3p2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyALwPleMp22b0cy7tyqNU_SVo_eF2ORMi4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "126506152270-e3jsa8dtdfegcfqcuaogkn0int28l3p2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "126506152270-jc72gb2grfqasi14kmlaupfk39pulkt5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.psyconnect.ios.PsyConnectIOS"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">PsyConnectAndroid</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">Bem-vindo de volta</string>
+    <string name="login_subtitle">Conecte-se com sua saúde mental</string>
+    <string name="login_email">Email</string>
+    <string name="login_email_hint">seu@email.com</string>
+    <string name="login_password">Senha</string>
+    <string name="login_password_hint">Sua senha</string>
+    <string name="login_button">Entrar</string>
+    <string name="login_or">ou</string>
+    <string name="login_no_account">Não tem uma conta?</string>
+    <string name="create_account">Criar conta</string>
+    
+    <!-- Register Screen -->
+    <string name="register_title">Criar sua conta</string>
+    <string name="register_subtitle">Junte-se à nossa comunidade</string>
+    <string name="register_full_name">Nome Completo</string>
+    <string name="register_full_name_hint">Seu nome completo</string>
+    <string name="register_email">Email</string>
+    <string name="register_email_hint">seu@email.com</string>
+    <string name="register_password">Senha</string>
+    <string name="register_password_hint">Sua senha</string>
+    <string name="register_confirm_password">Confirmar Senha</string>
+    <string name="register_confirm_password_hint">Confirme sua senha</string>
+    <string name="register_user_type">Tipo de Usuário</string>
+    <string name="register_patient">Paciente</string>
+    <string name="register_psychologist">Psicólogo</string>
+    <string name="register_button">Criar Conta</string>
+    <string name="cancel">Cancelar</string>
+    <string name="back">Voltar</string>
+</resources>
