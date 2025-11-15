@@ -8,6 +8,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : AppCompatActivity() {
@@ -50,22 +51,14 @@ class LoginActivity : AppCompatActivity() {
         val email = emailEditText.text.toString().trim()
         val password = passwordEditText.text.toString()
         
-        // Validation
-        if (email.isEmpty()) {
-            Toast.makeText(this, "Por favor, insira seu email", Toast.LENGTH_SHORT).show()
+        if (email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Por favor, preencha todos os campos.", Toast.LENGTH_SHORT).show()
             return
         }
         
-        if (password.isEmpty()) {
-            Toast.makeText(this, "Por favor, insira sua senha", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        // Login with Firebase
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    Toast.makeText(this, "Login realizado com sucesso!", Toast.LENGTH_SHORT).show()
                     navigateToUserHome()
                 } else {
                     Toast.makeText(this, "Erro no login: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
@@ -74,77 +67,152 @@ class LoginActivity : AppCompatActivity() {
     }
     
     private fun navigateToUserHome() {
-        val currentUser = auth.currentUser
-        if (currentUser != null) {
-            // First, try to get user data from "users" collection
-            firestore.collection("users")
-                .document(currentUser.uid)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        val userData = document.data ?: emptyMap()
-                        val userTypeString = userData["userType"] as? String ?: "PATIENT"
-                        
-                        // Debug log
-                        android.util.Log.d("LoginActivity", "User data from Firestore: $userData")
-                        android.util.Log.d("LoginActivity", "User type string: $userTypeString")
-                        
-                        val userType = try {
-                            UserType.valueOf(userTypeString)
-                        } catch (e: Exception) {
-                            android.util.Log.e("LoginActivity", "Error parsing userType: $userTypeString", e)
-                            UserType.PATIENT
-                        }
-                        
-                        android.util.Log.d("LoginActivity", "Navigating to: $userType")
-                        
-                        // Navigate based on user type
-                        navigateToUserScreen(userType)
+        val userId = auth.currentUser?.uid ?: return
+
+        determineUserType(
+            userId = userId,
+            onSuccess = { userType ->
+                navigateToUserScreen(userType)
+            },
+            onFailure = {
+                Toast.makeText(this, "Erro ao buscar dados do usuário.", Toast.LENGTH_SHORT).show()
+                navigateToDefault()
+            }
+        )
+    }
+
+    private fun determineUserType(
+        userId: String,
+        onSuccess: (UserType) -> Unit,
+        onFailure: () -> Unit
+    ) {
+        checkUserInCollection("pacientes", userId) { isPatient ->
+            if (isPatient) {
+                onSuccess(UserType.PATIENT)
+            } else {
+                checkUserInCollection("doutores", userId) { isDoctor ->
+                    if (isDoctor) {
+                        onSuccess(UserType.PSYCHOLOGIST)
                     } else {
-                        // Document not found in "users", try checking "doutores" and "pacientes" collections
-                        android.util.Log.w("LoginActivity", "Document does not exist in 'users', checking other collections")
-                        checkLegacyCollections(currentUser.uid)
+                        // Fallback to legacy "users" collection if new structure not found
+                        firestore.collection("users").document(userId).get()
+                            .addOnSuccessListener { document ->
+                                if (document.exists()) {
+                                    val userTypeString = document.getString("userType")
+                                    val userType = try {
+                                        UserType.valueOf(userTypeString ?: "PATIENT")
+                                    } catch (e: IllegalArgumentException) {
+                                        UserType.PATIENT
+                                    }
+                                    onSuccess(userType)
+                                } else {
+                                    checkLegacyCollections(userId, onSuccess, onFailure)
+                                }
+                            }
+                            .addOnFailureListener {
+                                checkLegacyCollections(userId, onSuccess, onFailure)
+                            }
                     }
                 }
-                .addOnFailureListener { e ->
-                    // Error reading user data, default to Patient
-                    android.util.Log.e("LoginActivity", "Error reading user data", e)
-                    navigateToDefault()
-                }
+            }
         }
     }
     
-    private fun checkLegacyCollections(userId: String) {
-        // Check if user exists in "doutores" collection
-        firestore.collection("doutores")
-            .document(userId)
-            .get()
+    private fun checkUserInCollection(
+        collection: String,
+        userId: String,
+        onComplete: (Boolean) -> Unit
+    ) {
+        val collectionRef = firestore.collection(collection)
+        collectionRef.document(userId).get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
-                    android.util.Log.d("LoginActivity", "Found user in 'doutores' collection, navigating to DoctorActivity")
-                    navigateToUserScreen(UserType.PSYCHOLOGIST)
+                    onComplete(true)
                 } else {
-                    // If not in doutores, check pacientes
-                    firestore.collection("pacientes")
-                        .document(userId)
-                        .get()
-                        .addOnSuccessListener { pacDoc ->
-                            if (pacDoc.exists()) {
-                                android.util.Log.d("LoginActivity", "Found user in 'pacientes' collection, navigating to PatientActivity")
-                                navigateToUserScreen(UserType.PATIENT)
+                    // Try to locate the user by a potential UID field (authUid or userId)
+                    findUserByField(
+                        collectionRef = collectionRef,
+                        userId = userId,
+                        fields = listOf("authUid", "userId", "uid"),
+                        onComplete = { found -> onComplete(found) }
+                    )
+                }
+            }
+            .addOnFailureListener {
+                onComplete(false)
+            }
+    }
+
+    private fun findUserByField(
+        collectionRef: com.google.firebase.firestore.CollectionReference,
+        userId: String,
+        fields: List<String>,
+        onComplete: (Boolean) -> Unit,
+        currentIndex: Int = 0
+    ) {
+        if (currentIndex >= fields.size) {
+            onComplete(false)
+            return
+        }
+
+        val field = fields[currentIndex]
+        collectionRef.whereEqualTo(field, userId).limit(1).get()
+            .addOnSuccessListener { querySnapshot ->
+                if (!querySnapshot.isEmpty) {
+                    onComplete(true)
+                } else {
+                    findUserByField(
+                        collectionRef = collectionRef,
+                        userId = userId,
+                        fields = fields,
+                        onComplete = onComplete,
+                        currentIndex = currentIndex + 1
+                    )
+                }
+            }
+            .addOnFailureListener {
+                findUserByField(
+                    collectionRef = collectionRef,
+                    userId = userId,
+                    fields = fields,
+                    onComplete = onComplete,
+                    currentIndex = currentIndex + 1
+                )
+            }
+    }
+
+    private fun checkLegacyCollections(
+        userId: String,
+        onSuccess: (UserType) -> Unit,
+        onFailure: () -> Unit
+    ) {
+        firestore.collection("doutores").document(userId).get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    onSuccess(UserType.PSYCHOLOGIST)
+                } else {
+                    firestore.collection("pacientes").document(userId).get()
+                        .addOnSuccessListener { patientDocument ->
+                            if (patientDocument.exists()) {
+                                onSuccess(UserType.PATIENT)
                             } else {
-                                android.util.Log.w("LoginActivity", "User not found in any collection, defaulting to Patient")
-                                navigateToDefault()
+                                onFailure()
                             }
                         }
+                        .addOnFailureListener {
+                            onFailure()
+                        }
                 }
+            }
+            .addOnFailureListener {
+                onFailure()
             }
     }
     
     private fun navigateToUserScreen(userType: UserType) {
         val intent = when (userType) {
             UserType.PATIENT -> Intent(this, PatientActivity::class.java)
-            UserType.PSYCHOLOGIST -> Intent(this, DoctorActivity::class.java)
+            UserType.PSYCHOLOGIST -> Intent(this, DoctorDashboardActivity::class.java)
         }
         
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -159,4 +227,3 @@ class LoginActivity : AppCompatActivity() {
         finish()
     }
 }
-

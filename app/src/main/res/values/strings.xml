@@ -28,6 +28,11 @@
     <string name="register_patient">Paciente</string>
     <string name="register_psychologist">Psicólogo</string>
     <string name="register_button">Criar Conta</string>
+    <string name="psychologist_card">Carteira Profissional de Psicólogo</string>
+    <string name="psychologist_card_number_hint">Número da carteira</string>
     <string name="cancel">Cancelar</string>
     <string name="back">Voltar</string>
+    
+    <!-- All Doctors Activity -->
+    <string name="title_activity_all_doctors">Encontrar Psicólogo</string>
 </resources>

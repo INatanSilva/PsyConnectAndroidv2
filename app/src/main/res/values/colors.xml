@@ -19,4 +19,15 @@
     <color name="text_primary">#333333</color>
     <color name="text_secondary">#999999</color>
     <color name="shadow_color">#20000000</color>
+    
+    <!-- Purple Theme Colors -->
+    <color name="primary_purple">#9C27B0</color>
+    <color name="primary_purple_light">#E1BEE7</color>
+    <color name="light_purple_bg">#F3E5F5</color>
+    <color name="purple_text">#7B1FA2</color>
+    
+    <!-- Status Colors -->
+    <color name="status_online">#4CAF50</color>
+    <color name="status_scheduled">#2196F3</color>
+    <color name="status_scheduled_bg">#E3F2FD</color>
 </resources>

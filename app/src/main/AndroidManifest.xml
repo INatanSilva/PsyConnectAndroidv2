@@ -33,10 +33,58 @@
             android:name=".PatientActivity"
             android:exported="false"
             android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".AllDoctorsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_all_doctors"
+            android:parentActivityName=".PatientActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
 
         <activity
-            android:name=".DoctorActivity"
+            android:name=".DoctorProfileActivity"
             android:exported="false"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".BookingConfirmationActivity"
+            android:exported="false"
+            android:label="Confirmar Agendamento"
+            android:parentActivityName=".DoctorProfileActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".MyAppointmentsActivity"
+            android:exported="false"
+            android:label="Minhas Consultas"
+            android:parentActivityName=".PatientActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+
+        <!-- Doctor Activities -->
+        <activity
+            android:name=".DoctorDashboardActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".DoctorScheduleActivity"
+            android:exported="false"
+            android:label="Minha Agenda"
+            android:parentActivityName=".DoctorDashboardActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+
+        <activity
+            android:name=".ManageAvailabilityActivity"
+            android:exported="false"
+            android:label="Gerenciar Disponibilidade"
+            android:parentActivityName=".DoctorDashboardActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".AppointmentDetailsDoctorActivity"
+            android:exported="false"
+            android:label="Detalhes da Consulta"
+            android:parentActivityName=".DoctorScheduleActivity"
             android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
 
     </application>

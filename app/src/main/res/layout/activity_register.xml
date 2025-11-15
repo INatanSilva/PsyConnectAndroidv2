@@ -256,7 +256,43 @@
                     android:textSize="14sp"
                     android:textStyle="bold" />
             </LinearLayout>
+        </LinearLayout>
+        
+        <!-- Psychologist professional card -->
+        <LinearLayout
+            android:id="@+id/llPsychologistCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/psychologist_card"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <Spinner
+                android:id="@+id/spinnerCountry"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/bg_text_input"
+                android:padding="12dp" />
+
+            <EditText
+                android:id="@+id/etCardNumber"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_text_input"
+                android:hint="@string/psychologist_card_number_hint"
+                android:inputType="text"
+                android:padding="12dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary" />
         </LinearLayout>
 
         <!-- Create Account Button -->
@@ -270,8 +306,9 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:elevation="4dp"
+            android:layout_marginTop="16dp"
             android:stateListAnimator="@null" />
+            
 
     </LinearLayout>
 </ScrollView>
-

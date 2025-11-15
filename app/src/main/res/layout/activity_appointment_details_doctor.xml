@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/light_gray">
+
+    <!-- Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbarAppointmentDetails"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        app:title="Detalhes da Consulta"
+        app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_arrow_back"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Patient Info -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Paciente"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
+                    <ImageView android:id="@+id/ivPatientPhoto" android:layout_width="50dp" android:layout_height="50dp" tools:src="@drawable/ic_person"/>
+                    <TextView android:id="@+id/tvPatientName" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:textSize="16sp" tools:text="Nome do Paciente"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Appointment Details -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Detalhes da Consulta"
+                android:layout_marginTop="24dp"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                    <TextView android:id="@+id/tvAppointmentDate" android:layout_width="wrap_content" android:layout_height="wrap_content" tools:text="Data: 25 de Julho de 2024"/>
+                    <TextView android:id="@+id/tvAppointmentTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" tools:text="Horário: 10:00 - 11:00"/>
+                    <TextView android:id="@+id/tvAppointmentStatusDetails" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" tools:text="Status: Confirmada"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Patient Notes -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Anotações sobre o Paciente"
+                android:layout_marginTop="24dp"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                    <EditText
+                        android:id="@+id/etPatientNotes"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minLines="5"
+                        android:gravity="top"
+                        android:hint="Adicione suas anotações aqui..."
+                        android:background="@android:color/transparent"/>
+                    <Button
+                        android:id="@+id/btnSaveNotes"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Salvar Anotações"
+                        android:layout_gravity="end"
+                        android:layout_marginTop="8dp"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
