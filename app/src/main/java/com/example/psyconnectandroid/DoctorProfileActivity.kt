@@ -14,6 +14,7 @@ import com.bumptech.glide.Glide
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import java.util.Locale
+import kotlin.comparisons.nullsLast
 
 class DoctorProfileActivity : AppCompatActivity() {
 
@@ -126,45 +127,120 @@ class DoctorProfileActivity : AppCompatActivity() {
     
     private fun loadAvailability() {
         doctorId?.let { id ->
+            // Buscar sem orderBy para evitar necessidade de índice composto
             firestore.collection("doctorAvailability")
                 .whereEqualTo("doctorId", id)
                 .whereEqualTo("isBooked", false)
-                .orderBy("startTime", Query.Direction.ASCENDING)
-                .limit(10)
                 .get()
-                .addOnSuccessListener { documents ->
+                .addOnSuccessListener { querySnapshot ->
                     availabilitySlots.clear()
-                    for (document in documents) {
-                        // Pass document.id to fromMap
-                        availabilitySlots.add(AvailabilitySlot.fromMap(document.data, document.id))
+                    
+                    for (document in querySnapshot.documents) {
+                        try {
+                            val data = document.data
+                            if (data != null) {
+                                val slot = AvailabilitySlot.fromMap(data, document.id)
+                                availabilitySlots.add(slot)
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("DoctorProfileActivity", "Error parsing availability slot ${document.id}", e)
+                        }
                     }
+                    
+                    // Ordenar manualmente por startTime (mais próximos primeiro)
+                    availabilitySlots.sortWith(compareBy(nullsLast()) { it.startTime })
+                    
+                    // Filtrar apenas slots futuros e limitar a 10
+                    val now = com.google.firebase.Timestamp.now()
+                    val futureSlots = availabilitySlots.filter { 
+                        it.startTime != null && it.startTime!!.compareTo(now) > 0 
+                    }.take(10)
+                    
+                    availabilitySlots.clear()
+                    availabilitySlots.addAll(futureSlots)
+                    
                     availabilityAdapter.notifyDataSetChanged()
                 }
                 .addOnFailureListener { e ->
-                    Toast.makeText(this, "Erro ao carregar disponibilidade: ${e.message}", Toast.LENGTH_SHORT).show()
+                    android.util.Log.e("DoctorProfileActivity", "Error loading availability", e)
+                    // Tentar buscar sem filtro de isBooked se a query anterior falhar
+                    firestore.collection("doctorAvailability")
+                        .whereEqualTo("doctorId", id)
+                        .get()
+                        .addOnSuccessListener { querySnapshot ->
+                            availabilitySlots.clear()
+                            val now = com.google.firebase.Timestamp.now()
+                            for (document in querySnapshot.documents) {
+                                try {
+                                    val data = document.data
+                                    if (data != null) {
+                                        val slot = AvailabilitySlot.fromMap(data, document.id)
+                                        // Filtrar manualmente por isBooked e data futura
+                                        if (!slot.isBooked && slot.startTime != null && slot.startTime!!.compareTo(now) > 0) {
+                                            availabilitySlots.add(slot)
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("DoctorProfileActivity", "Error parsing slot ${document.id}", e)
+                                }
+                            }
+                            availabilitySlots.sortWith(compareBy(nullsLast()) { it.startTime })
+                            val limitedSlots = availabilitySlots.take(10)
+                            availabilitySlots.clear()
+                            availabilitySlots.addAll(limitedSlots)
+                            availabilityAdapter.notifyDataSetChanged()
+                        }
+                        .addOnFailureListener { e2 ->
+                            Toast.makeText(this, "Erro ao carregar disponibilidade: ${e2.message}", Toast.LENGTH_SHORT).show()
+                        }
                 }
         }
     }
     
     private fun loadReviews() {
         doctorId?.let { id ->
+            // Buscar sem orderBy para evitar necessidade de índice composto
             firestore.collection("avaliacoes")
                 .whereEqualTo("doctorId", id)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-                .limit(10)
                 .get()
-                .addOnSuccessListener { documents ->
+                .addOnSuccessListener { querySnapshot ->
                     reviews.clear()
                     var totalRating = 0.0
-                    for (document in documents) {
-                        val review = Review.fromMap(document.data)
-                        reviews.add(review)
-                        totalRating += review.rating
+                    
+                    for (document in querySnapshot.documents) {
+                        try {
+                            val data = document.data
+                            if (data != null) {
+                                val review = Review.fromMap(data)
+                                reviews.add(review)
+                                totalRating += review.rating
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("DoctorProfileActivity", "Error parsing review ${document.id}", e)
+                        }
                     }
                     
-                    if (reviews.isNotEmpty()) {
-                        val avgRating = totalRating / reviews.size
-                        tvDoctorProfileRating.text = String.format(Locale.US, "%.1f (%d avaliações)", avgRating, reviews.size)
+                    // Ordenar manualmente por createdAt (mais recentes primeiro)
+                    reviews.sortWith(compareBy(nullsLast()) { it.createdAt })
+                    reviews.reverse() // Reverter para ter mais recentes primeiro (DESCENDING)
+                    
+                    // Limitar a 10 mais recentes/melhores
+                    val limitedReviews = reviews.take(10)
+                    reviews.clear()
+                    reviews.addAll(limitedReviews)
+                    
+                    // Calcular rating médio
+                    val allReviews = querySnapshot.documents.mapNotNull { doc ->
+                        try {
+                            Review.fromMap(doc.data ?: return@mapNotNull null)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    
+                    if (allReviews.isNotEmpty()) {
+                        val avgRating = allReviews.map { it.rating }.average()
+                        tvDoctorProfileRating.text = String.format(Locale.US, "%.1f (%d avaliações)", avgRating, allReviews.size)
                     } else {
                         tvDoctorProfileRating.text = "Nenhuma avaliação"
                     }
@@ -172,6 +248,7 @@ class DoctorProfileActivity : AppCompatActivity() {
                     reviewsAdapter.notifyDataSetChanged()
                 }
                 .addOnFailureListener { e ->
+                    android.util.Log.e("DoctorProfileActivity", "Error loading reviews", e)
                     Toast.makeText(this, "Erro ao carregar avaliações: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
         }
