@@ -11,7 +11,8 @@ data class Appointment(
     val patientName: String = "",
     val startTime: Timestamp? = null,
     val endTime: Timestamp? = null,
-    val status: String = "" // e.g., "confirmed", "completed", "cancelled"
+    val status: String = "", // e.g., "confirmed", "completed", "cancelled"
+    @get:Exclude val doctorPhotoUrl: String = "" // Photo URL do doutor (não vem direto do Firestore, precisa buscar)
 ) {
     companion object {
         fun fromMap(map: Map<String, Any>, documentId: String): Appointment {

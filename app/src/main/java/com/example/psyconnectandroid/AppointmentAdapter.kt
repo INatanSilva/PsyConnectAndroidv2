@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -17,6 +18,9 @@ class AppointmentAdapter(
     private val userType: UserType, // Differentiates view for patient or doctor
     private val onAppointmentClick: (Appointment) -> Unit
 ) : RecyclerView.Adapter<AppointmentAdapter.AppointmentViewHolder>() {
+    
+    private val firestore = FirebaseFirestore.getInstance()
+    private val doctorPhotoCache = mutableMapOf<String, String>() // Cache de fotos de doutores
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppointmentViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -53,22 +57,129 @@ class AppointmentAdapter(
             tvStatus.text = appointment.status.replaceFirstChar { it.titlecase() }
             tvStatus.background = getStatusDrawable(itemView.context, appointment.status)
 
-            // TODO: Fetch the correct photo URL (patient's for doctor, doctor's for patient)
-            Glide.with(itemView.context)
-                .load(R.drawable.ic_person)
-                .circleCrop()
-                .into(ivPhoto)
+            // Carregar foto do doutor para pacientes, ou foto do paciente para doutores
+            if (userType == UserType.PATIENT && appointment.doctorId.isNotEmpty()) {
+                loadDoctorPhoto(appointment.doctorId, ivPhoto)
+            } else if (userType == UserType.PSYCHOLOGIST && appointment.patientId.isNotEmpty()) {
+                // Para doutores, podemos buscar foto do paciente também (se necessário)
+                loadPatientPhoto(appointment.patientId, ivPhoto)
+            } else {
+                // Placeholder se não tiver ID
+                Glide.with(itemView.context)
+                    .load(R.drawable.ic_person)
+                    .circleCrop()
+                    .into(ivPhoto)
+            }
 
             itemView.setOnClickListener {
                 onAppointmentClick(appointment)
             }
         }
+        
+        private fun loadDoctorPhoto(doctorId: String, imageView: ImageView) {
+            // Verificar cache primeiro
+            val cachedUrl = doctorPhotoCache[doctorId]
+            if (cachedUrl != null && cachedUrl.isNotEmpty()) {
+                Glide.with(itemView.context)
+                    .load(cachedUrl)
+                    .placeholder(R.drawable.ic_person)
+                    .error(R.drawable.ic_person)
+                    .circleCrop()
+                    .into(imageView)
+                return
+            }
+            
+            // Buscar do Firestore se não estiver no cache
+            firestore.collection("doutores").document(doctorId).get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val photoUrl = document.getString("profileImageURL")
+                            ?: document.getString("profileImageUrl")
+                            ?: document.getString("photoUrl")
+                            ?: document.getString("photo")
+                            ?: document.getString("imageUrl")
+                            ?: ""
+                        
+                        // Atualizar cache
+                        if (photoUrl.isNotEmpty()) {
+                            doctorPhotoCache[doctorId] = photoUrl
+                        }
+                        
+                        // Carregar imagem
+                        if (photoUrl.isNotEmpty()) {
+                            Glide.with(itemView.context)
+                                .load(photoUrl)
+                                .placeholder(R.drawable.ic_person)
+                                .error(R.drawable.ic_person)
+                                .circleCrop()
+                                .into(imageView)
+                        } else {
+                            Glide.with(itemView.context)
+                                .load(R.drawable.ic_person)
+                                .circleCrop()
+                                .into(imageView)
+                        }
+                    } else {
+                        Glide.with(itemView.context)
+                            .load(R.drawable.ic_person)
+                            .circleCrop()
+                            .into(imageView)
+                    }
+                }
+                .addOnFailureListener {
+                    // Em caso de erro, usar placeholder
+                    Glide.with(itemView.context)
+                        .load(R.drawable.ic_person)
+                        .circleCrop()
+                        .into(imageView)
+                }
+        }
+        
+        private fun loadPatientPhoto(patientId: String, imageView: ImageView) {
+            // Buscar foto do paciente na coleção pacientes
+            firestore.collection("pacientes").document(patientId).get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val photoUrl = document.getString("photoUrl")
+                            ?: document.getString("profileImageUrl")
+                            ?: document.getString("profileImageURL")
+                            ?: document.getString("imageUrl")
+                            ?: ""
+                        
+                        if (photoUrl.isNotEmpty()) {
+                            Glide.with(itemView.context)
+                                .load(photoUrl)
+                                .placeholder(R.drawable.ic_person)
+                                .error(R.drawable.ic_person)
+                                .circleCrop()
+                                .into(imageView)
+                        } else {
+                            Glide.with(itemView.context)
+                                .load(R.drawable.ic_person)
+                                .circleCrop()
+                                .into(imageView)
+                        }
+                    } else {
+                        Glide.with(itemView.context)
+                            .load(R.drawable.ic_person)
+                            .circleCrop()
+                            .into(imageView)
+                    }
+                }
+                .addOnFailureListener {
+                    Glide.with(itemView.context)
+                        .load(R.drawable.ic_person)
+                        .circleCrop()
+                        .into(imageView)
+                }
+        }
 
         private fun getStatusDrawable(context: Context, status: String): android.graphics.drawable.Drawable? {
             val drawableId = when (status.lowercase()) {
-                "confirmed" -> R.drawable.bg_status_confirmed
-                "completed" -> R.drawable.bg_status_completed
-                "cancelled" -> R.drawable.bg_status_cancelled
+                "agendada", "scheduled" -> R.drawable.bg_status_confirmed // Usa confirmed para agendada
+                "confirmed", "confirmada" -> R.drawable.bg_status_confirmed
+                "completed", "completada", "concluída" -> R.drawable.bg_status_completed
+                "cancelled", "cancelada" -> R.drawable.bg_status_cancelled
                 else -> R.drawable.bg_status_pending
             }
             return ContextCompat.getDrawable(context, drawableId)

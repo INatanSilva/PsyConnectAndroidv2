@@ -94,7 +94,8 @@ class DoctorsActivity : AppCompatActivity() {
         }
         
         navAppointments.setOnClickListener {
-            Toast.makeText(this, "Em breve: Tela de consultas", Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, MyAppointmentsActivity::class.java)
+            startActivity(intent)
         }
         
         navDoctors.setOnClickListener {
