@@ -133,20 +133,49 @@ class ManageAvailabilityActivity : AppCompatActivity() {
     private fun addSlot(startTime: Date, endTime: Date) {
         if (doctorId == null) return
 
+        val now = Timestamp.now()
+        val startTimestamp = Timestamp(startTime)
+        val endTimestamp = Timestamp(endTime)
+        
+        // Create date timestamp (start of the day)
+        val dateCalendar = Calendar.getInstance()
+        dateCalendar.time = startTime
+        dateCalendar.set(Calendar.HOUR_OF_DAY, 0)
+        dateCalendar.set(Calendar.MINUTE, 0)
+        dateCalendar.set(Calendar.SECOND, 0)
+        dateCalendar.set(Calendar.MILLISECOND, 0)
+        val dateTimestamp = Timestamp(dateCalendar.time)
+
         val newSlot = hashMapOf(
             "doctorId" to doctorId,
-            "startTime" to Timestamp(startTime),
-            "endTime" to Timestamp(endTime),
-            "isBooked" to false
+            "startTime" to startTimestamp,
+            "endTime" to endTimestamp,
+            "date" to dateTimestamp,
+            "isBooked" to false,
+            "isAvailable" to true,
+            "patientId" to null,
+            "patientName" to null,
+            "appointmentId" to null,
+            "createdAt" to now,
+            "updatedAt" to now
         )
+        
+        android.util.Log.d("ManageAvailability", "✅ Creating slot:")
+        android.util.Log.d("ManageAvailability", "   doctorId: $doctorId")
+        android.util.Log.d("ManageAvailability", "   date: ${dateTimestamp.toDate()}")
+        android.util.Log.d("ManageAvailability", "   startTime: ${startTimestamp.toDate()}")
+        android.util.Log.d("ManageAvailability", "   endTime: ${endTimestamp.toDate()}")
+        android.util.Log.d("ManageAvailability", "   isAvailable: true")
 
         firestore.collection("doctorAvailability").add(newSlot)
-            .addOnSuccessListener {
+            .addOnSuccessListener { docRef ->
+                android.util.Log.d("ManageAvailability", "✅ Slot created with ID: ${docRef.id}")
                 Toast.makeText(this, "Horário adicionado!", Toast.LENGTH_SHORT).show()
                 loadSlotsForSelectedDate() // Refresh the list
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Erro ao adicionar horário.", Toast.LENGTH_SHORT).show()
+            .addOnFailureListener { e ->
+                android.util.Log.e("ManageAvailability", "❌ Error creating slot", e)
+                Toast.makeText(this, "Erro ao adicionar horário: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 

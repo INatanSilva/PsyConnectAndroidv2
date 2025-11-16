@@ -139,10 +139,12 @@ class DoctorProfileActivity : AppCompatActivity() {
                 .whereEqualTo("doctorId", id)
                 .get()
                 .addOnSuccessListener { querySnapshot ->
+                    val now = com.google.firebase.Timestamp.now()
                     android.util.Log.d("DoctorProfileActivity", "✅ Found ${querySnapshot.size()} total availability slots")
+                    android.util.Log.d("DoctorProfileActivity", "⏰ Current time: ${now.toDate()}")
+                    android.util.Log.d("DoctorProfileActivity", "⏰ Current timestamp seconds: ${now.seconds}")
                     
                     availabilitySlots.clear()
-                    val now = com.google.firebase.Timestamp.now()
                     
                     for (document in querySnapshot.documents) {
                         try {
@@ -155,17 +157,31 @@ class DoctorProfileActivity : AppCompatActivity() {
                                 
                                 android.util.Log.d("DoctorProfileActivity", "      Slot: isBooked=${slot.isBooked}, isAvailable=${slot.isAvailable}")
                                 android.util.Log.d("DoctorProfileActivity", "      StartTime: ${slot.startTime?.toDate()}")
+                                android.util.Log.d("DoctorProfileActivity", "      StartTime seconds: ${slot.startTime?.seconds}")
                                 
                                 // Filtrar: não reservado, disponível e no futuro
                                 if (!slot.isBooked && slot.isAvailable && slot.startTime != null) {
-                                    if (slot.startTime!!.compareTo(now) > 0) {
+                                    val comparison = slot.startTime!!.compareTo(now)
+                                    val diffSeconds = slot.startTime!!.seconds - now.seconds
+                                    val diffHours = diffSeconds / 3600.0
+                                    
+                                    android.util.Log.d("DoctorProfileActivity", "      ⏰ Time comparison: $comparison (>0 = future)")
+                                    android.util.Log.d("DoctorProfileActivity", "      ⏰ Difference: $diffSeconds seconds (${String.format("%.2f", diffHours)} hours)")
+                                    
+                                    if (comparison > 0) {
                                         availabilitySlots.add(slot)
-                                        android.util.Log.d("DoctorProfileActivity", "      ✅ Added to list")
+                                        android.util.Log.d("DoctorProfileActivity", "      ✅ Added to list (${String.format("%.2f", diffHours)} hours in future)")
                                     } else {
-                                        android.util.Log.d("DoctorProfileActivity", "      ⏭️ Skipped - past date")
+                                        android.util.Log.d("DoctorProfileActivity", "      ⏭️ Skipped - past date (${String.format("%.2f", Math.abs(diffHours))} hours ago)")
                                     }
                                 } else {
-                                    android.util.Log.d("DoctorProfileActivity", "      ⏭️ Skipped - booked or unavailable")
+                                    val reason = when {
+                                        slot.isBooked -> "already booked"
+                                        !slot.isAvailable -> "not available (isAvailable=false)"
+                                        slot.startTime == null -> "no startTime"
+                                        else -> "unknown"
+                                    }
+                                    android.util.Log.d("DoctorProfileActivity", "      ⏭️ Skipped - $reason")
                                 }
                             }
                         } catch (e: Exception) {
@@ -189,6 +205,10 @@ class DoctorProfileActivity : AppCompatActivity() {
                     
                     if (availabilitySlots.isEmpty()) {
                         android.util.Log.w("DoctorProfileActivity", "⚠️ No available slots found for this doctor")
+                        android.util.Log.w("DoctorProfileActivity", "   Possible reasons:")
+                        android.util.Log.w("DoctorProfileActivity", "   - All slots are in the past")
+                        android.util.Log.w("DoctorProfileActivity", "   - All slots are booked")
+                        android.util.Log.w("DoctorProfileActivity", "   - isAvailable field is false")
                     }
                 }
                 .addOnFailureListener { e ->
