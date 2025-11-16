@@ -156,16 +156,20 @@ class DoctorProfileActivity : AppCompatActivity() {
                                 val slot = AvailabilitySlot.fromMap(data, document.id)
                                 
                                 android.util.Log.d("DoctorProfileActivity", "      Slot: isBooked=${slot.isBooked}, isAvailable=${slot.isAvailable}")
-                                android.util.Log.d("DoctorProfileActivity", "      StartTime: ${slot.startTime?.toDate()}")
-                                android.util.Log.d("DoctorProfileActivity", "      StartTime seconds: ${slot.startTime?.seconds}")
+                                android.util.Log.d("DoctorProfileActivity", "      Date (consulta): ${slot.date?.toDate()}")
+                                android.util.Log.d("DoctorProfileActivity", "      StartTime (horário): ${slot.startTime?.toDate()}")
+                                
+                                // Usar o campo DATE para verificar se a consulta está no futuro
+                                // DATE = data da consulta, StartTime = horário específico
+                                val dateToCheck = slot.date ?: slot.startTime
                                 
                                 // Filtrar: não reservado, disponível e no futuro
-                                if (!slot.isBooked && slot.isAvailable && slot.startTime != null) {
-                                    val comparison = slot.startTime!!.compareTo(now)
-                                    val diffSeconds = slot.startTime!!.seconds - now.seconds
+                                if (!slot.isBooked && slot.isAvailable && dateToCheck != null) {
+                                    val comparison = dateToCheck.compareTo(now)
+                                    val diffSeconds = dateToCheck.seconds - now.seconds
                                     val diffHours = diffSeconds / 3600.0
                                     
-                                    android.util.Log.d("DoctorProfileActivity", "      ⏰ Time comparison: $comparison (>0 = future)")
+                                    android.util.Log.d("DoctorProfileActivity", "      ⏰ Date comparison: $comparison (>0 = future)")
                                     android.util.Log.d("DoctorProfileActivity", "      ⏰ Difference: $diffSeconds seconds (${String.format("%.2f", diffHours)} hours)")
                                     
                                     if (comparison > 0) {
@@ -178,7 +182,7 @@ class DoctorProfileActivity : AppCompatActivity() {
                                     val reason = when {
                                         slot.isBooked -> "already booked"
                                         !slot.isAvailable -> "not available (isAvailable=false)"
-                                        slot.startTime == null -> "no startTime"
+                                        dateToCheck == null -> "no date or startTime"
                                         else -> "unknown"
                                     }
                                     android.util.Log.d("DoctorProfileActivity", "      ⏭️ Skipped - $reason")
@@ -190,8 +194,8 @@ class DoctorProfileActivity : AppCompatActivity() {
                         }
                     }
                     
-                    // Ordenar manualmente por startTime (mais próximos primeiro)
-                    availabilitySlots.sortWith(compareBy(nullsLast()) { it.startTime })
+                    // Ordenar manualmente por date/startTime (mais próximos primeiro)
+                    availabilitySlots.sortWith(compareBy(nullsLast()) { it.date ?: it.startTime })
                     
                     // Limitar a 10 mais próximos
                     val limitedSlots = availabilitySlots.take(10)
