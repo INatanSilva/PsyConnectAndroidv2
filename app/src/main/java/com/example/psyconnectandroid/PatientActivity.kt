@@ -210,54 +210,114 @@ class PatientActivity : AppCompatActivity() {
     private fun loadDoctors() {
         loadPromotedDoctors()
         
+        android.util.Log.d("PatientActivity", "🔍 Loading available doctors from Firestore...")
+        
+        // Load all doctors and sort locally to avoid Firestore composite index requirements
         firestore.collection("doutores")
-            .whereEqualTo("isPromoted", false)
-            .limit(10)
             .get()
             .addOnSuccessListener { documents ->
+                android.util.Log.d("PatientActivity", "✅ Found ${documents.size()} total doctors in Firestore")
+                
                 doctors.clear()
+                val tempDoctors = mutableListOf<Doctor>()
+                
                 for (document in documents) {
-                    doctors.add(Doctor.fromMap(document.data, document.id))
+                    try {
+                        val doctor = Doctor.fromMap(document.data, document.id)
+                        
+                        // Only add non-promoted doctors or doctors with expired promotions
+                        if (!doctor.isPromoted || !doctor.isPromotionValid()) {
+                            tempDoctors.add(doctor)
+                            android.util.Log.d("PatientActivity", "   Doctor: ${doctor.name}, Rating: ${doctor.rating}, Online: ${doctor.isAvailable}")
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("PatientActivity", "Error parsing doctor ${document.id}", e)
+                    }
                 }
+                
+                // Sort by rating in descending order (highest rating first)
+                tempDoctors.sortByDescending { it.rating }
+                
+                // Take only top 10
+                doctors.addAll(tempDoctors.take(10))
+                
+                android.util.Log.d("PatientActivity", "✅ Loaded ${doctors.size} available doctors (sorted by rating)")
                 updateDoctorsUI()
             }
-            .addOnFailureListener {
-                loadAllDoctors() // Fallback
+            .addOnFailureListener { e ->
+                android.util.Log.e("PatientActivity", "❌ Error loading doctors from Firestore", e)
+                Toast.makeText(this, "Erro ao carregar doutores: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
     
     private fun loadPromotedDoctors() {
+        android.util.Log.d("PatientActivity", "🔍 Loading promoted doctors from Firestore...")
+        
         firestore.collection("doutores")
             .whereEqualTo("isPromoted", true)
             .get()
             .addOnSuccessListener { documents ->
+                android.util.Log.d("PatientActivity", "✅ Found ${documents.size()} promoted doctors")
+                
                 promotedDoctors.clear()
                 for (document in documents) {
-                    val doctor = Doctor.fromMap(document.data, document.id)
-                    if (doctor.isPromotionValid()) {
-                        promotedDoctors.add(doctor)
+                    try {
+                        val doctor = Doctor.fromMap(document.data, document.id)
+                        if (doctor.isPromotionValid()) {
+                            promotedDoctors.add(doctor)
+                            android.util.Log.d("PatientActivity", "   Promoted Doctor: ${doctor.name}, Rating: ${doctor.rating}")
+                        } else {
+                            android.util.Log.d("PatientActivity", "   Skipped expired promotion: ${doctor.name}")
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("PatientActivity", "Error parsing promoted doctor ${document.id}", e)
                     }
                 }
+                
+                android.util.Log.d("PatientActivity", "✅ Loaded ${promotedDoctors.size} valid promoted doctors")
                 updateDoctorsUI()
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("PatientActivity", "❌ Error loading promoted doctors", e)
             }
     }
     
     private fun loadAllDoctors() {
+        android.util.Log.d("PatientActivity", "🔍 Loading all doctors (fallback method)...")
+        
         firestore.collection("doutores")
-            .limit(20) // Limit fallback load as well
             .get()
             .addOnSuccessListener { documents ->
+                android.util.Log.d("PatientActivity", "✅ Loaded ${documents.size()} doctors (fallback)")
+                
                 doctors.clear()
                 promotedDoctors.clear()
+                val tempDoctors = mutableListOf<Doctor>()
+                
                 for (document in documents) {
-                    val doctor = Doctor.fromMap(document.data, document.id)
-                    if (doctor.isPromoted && doctor.isPromotionValid()) {
-                        promotedDoctors.add(doctor)
-                    } else {
-                        doctors.add(doctor)
+                    try {
+                        val doctor = Doctor.fromMap(document.data, document.id)
+                        if (doctor.isPromoted && doctor.isPromotionValid()) {
+                            promotedDoctors.add(doctor)
+                        } else {
+                            tempDoctors.add(doctor)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("PatientActivity", "Error parsing doctor ${document.id}", e)
                     }
                 }
+                
+                // Sort by rating in descending order
+                tempDoctors.sortByDescending { it.rating }
+                
+                // Take only top 10 for available doctors
+                doctors.addAll(tempDoctors.take(10))
+                
+                android.util.Log.d("PatientActivity", "✅ Fallback complete: ${promotedDoctors.size} promoted, ${doctors.size} available")
                 updateDoctorsUI()
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("PatientActivity", "❌ Error in fallback load", e)
             }
     }
     

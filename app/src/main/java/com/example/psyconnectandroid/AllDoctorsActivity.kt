@@ -120,6 +120,9 @@ class AllDoctorsActivity : AppCompatActivity() {
                     }
                 }
                 
+                // Sort by rating in descending order (highest rating first)
+                allDoctors.sortByDescending { it.rating }
+                
                 filterDoctors()
             }
             .addOnFailureListener { e ->
@@ -147,6 +150,9 @@ class AllDoctorsActivity : AppCompatActivity() {
                 filteredDoctors.add(doctor)
             }
         }
+        
+        // Sort filtered results by rating in descending order (highest rating first)
+        filteredDoctors.sortByDescending { it.rating }
         
         recyclerViewDoctors.adapter = DoctorsGridAdapter(filteredDoctors) { doctor ->
             connectToDoctor(doctor)
