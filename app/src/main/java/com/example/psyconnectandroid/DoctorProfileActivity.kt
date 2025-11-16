@@ -132,73 +132,72 @@ class DoctorProfileActivity : AppCompatActivity() {
     
     private fun loadAvailability() {
         doctorId?.let { id ->
-            // Buscar sem orderBy para evitar necessidade de índice composto
+            android.util.Log.d("DoctorProfileActivity", "🔍 Loading availability for doctor: $id")
+            
+            // Buscar todas as disponibilidades do doutor e filtrar localmente
             firestore.collection("doctorAvailability")
                 .whereEqualTo("doctorId", id)
-                .whereEqualTo("isBooked", false)
                 .get()
                 .addOnSuccessListener { querySnapshot ->
+                    android.util.Log.d("DoctorProfileActivity", "✅ Found ${querySnapshot.size()} total availability slots")
+                    
                     availabilitySlots.clear()
+                    val now = com.google.firebase.Timestamp.now()
                     
                     for (document in querySnapshot.documents) {
                         try {
                             val data = document.data
                             if (data != null) {
+                                android.util.Log.d("DoctorProfileActivity", "   📄 Processing slot ${document.id}")
+                                android.util.Log.d("DoctorProfileActivity", "      Fields: ${data.keys}")
+                                
                                 val slot = AvailabilitySlot.fromMap(data, document.id)
-                                availabilitySlots.add(slot)
+                                
+                                android.util.Log.d("DoctorProfileActivity", "      Slot: isBooked=${slot.isBooked}, isAvailable=${slot.isAvailable}")
+                                android.util.Log.d("DoctorProfileActivity", "      StartTime: ${slot.startTime?.toDate()}")
+                                
+                                // Filtrar: não reservado, disponível e no futuro
+                                if (!slot.isBooked && slot.isAvailable && slot.startTime != null) {
+                                    if (slot.startTime!!.compareTo(now) > 0) {
+                                        availabilitySlots.add(slot)
+                                        android.util.Log.d("DoctorProfileActivity", "      ✅ Added to list")
+                                    } else {
+                                        android.util.Log.d("DoctorProfileActivity", "      ⏭️ Skipped - past date")
+                                    }
+                                } else {
+                                    android.util.Log.d("DoctorProfileActivity", "      ⏭️ Skipped - booked or unavailable")
+                                }
                             }
                         } catch (e: Exception) {
-                            android.util.Log.e("DoctorProfileActivity", "Error parsing availability slot ${document.id}", e)
+                            android.util.Log.e("DoctorProfileActivity", "❌ Error parsing availability slot ${document.id}", e)
+                            e.printStackTrace()
                         }
                     }
                     
                     // Ordenar manualmente por startTime (mais próximos primeiro)
                     availabilitySlots.sortWith(compareBy(nullsLast()) { it.startTime })
                     
-                    // Filtrar apenas slots futuros e limitar a 10
-                    val now = com.google.firebase.Timestamp.now()
-                    val futureSlots = availabilitySlots.filter { 
-                        it.startTime != null && it.startTime!!.compareTo(now) > 0 
-                    }.take(10)
-                    
+                    // Limitar a 10 mais próximos
+                    val limitedSlots = availabilitySlots.take(10)
                     availabilitySlots.clear()
-                    availabilitySlots.addAll(futureSlots)
+                    availabilitySlots.addAll(limitedSlots)
                     
+                    android.util.Log.d("DoctorProfileActivity", "✅ Final availability count: ${availabilitySlots.size}")
+                    
+                    // Atualizar UI
                     availabilityAdapter.notifyDataSetChanged()
+                    
+                    if (availabilitySlots.isEmpty()) {
+                        android.util.Log.w("DoctorProfileActivity", "⚠️ No available slots found for this doctor")
+                    }
                 }
                 .addOnFailureListener { e ->
-                    android.util.Log.e("DoctorProfileActivity", "Error loading availability", e)
-                    // Tentar buscar sem filtro de isBooked se a query anterior falhar
-                    firestore.collection("doctorAvailability")
-                        .whereEqualTo("doctorId", id)
-                        .get()
-                        .addOnSuccessListener { querySnapshot ->
-                            availabilitySlots.clear()
-                            val now = com.google.firebase.Timestamp.now()
-                            for (document in querySnapshot.documents) {
-                                try {
-                                    val data = document.data
-                                    if (data != null) {
-                                        val slot = AvailabilitySlot.fromMap(data, document.id)
-                                        // Filtrar manualmente por isBooked e data futura
-                                        if (!slot.isBooked && slot.startTime != null && slot.startTime!!.compareTo(now) > 0) {
-                                            availabilitySlots.add(slot)
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    android.util.Log.e("DoctorProfileActivity", "Error parsing slot ${document.id}", e)
-                                }
-                            }
-                            availabilitySlots.sortWith(compareBy(nullsLast()) { it.startTime })
-                            val limitedSlots = availabilitySlots.take(10)
-                            availabilitySlots.clear()
-                            availabilitySlots.addAll(limitedSlots)
-                            availabilityAdapter.notifyDataSetChanged()
-                        }
-                        .addOnFailureListener { e2 ->
-                            Toast.makeText(this, "Erro ao carregar disponibilidade: ${e2.message}", Toast.LENGTH_SHORT).show()
-                        }
+                    android.util.Log.e("DoctorProfileActivity", "❌ Error loading availability from Firestore", e)
+                    e.printStackTrace()
+                    Toast.makeText(this, "Erro ao carregar disponibilidade: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
+        } ?: run {
+            android.util.Log.e("DoctorProfileActivity", "❌ Doctor ID is null, cannot load availability")
         }
     }
     
