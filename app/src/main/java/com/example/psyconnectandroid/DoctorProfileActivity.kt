@@ -91,7 +91,12 @@ class DoctorProfileActivity : AppCompatActivity() {
             finish()
         }
         btnBookAppointment.setOnClickListener {
-            Toast.makeText(this, "Funcionalidade de agendamento principal em breve!", Toast.LENGTH_SHORT).show()
+            // Show available slots or message if none available
+            if (availabilitySlots.isEmpty()) {
+                Toast.makeText(this, "Nenhum horário disponível no momento.", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Selecione um horário disponível acima.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

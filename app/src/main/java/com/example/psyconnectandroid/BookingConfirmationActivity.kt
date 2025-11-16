@@ -175,28 +175,26 @@ class BookingConfirmationActivity : AppCompatActivity() {
             return
         }
 
-        val appointment = hashMapOf(
-            "patientId" to patientId,
-            "doctorId" to doctorId,
-            "startTime" to slot?.startTime,
-            "endTime" to slot?.endTime,
-            "status" to "confirmed",
-            "createdAt" to com.google.firebase.Timestamp.now(),
-            "doctorName" to doctor?.name,
-            "patientName" to (patientName ?: auth.currentUser?.displayName ?: auth.currentUser?.email ?: "Paciente")
-        )
+        // Calculate total amount in cents (price + service fee)
+        val priceInCents = doctor!!.priceEurCents
+        val serviceFeeInCents = 250 // 2.50 EUR service fee
+        val totalAmountInCents = priceInCents + serviceFeeInCents
+        
+        android.util.Log.d("BookingConfirmation", "Starting payment flow - Amount: $totalAmountInCents cents")
 
-        firestore.collection("appointments").add(appointment)
-            .addOnSuccessListener {
-                // Mark slot as booked
-                firestore.collection("doctorAvailability").document(slotId!!).update("isBooked", true)
-                
-                Toast.makeText(this, "Consulta agendada com sucesso!", Toast.LENGTH_LONG).show()
-                // Redirect to a confirmation or appointments screen
-                finish() 
-            }
-            .addOnFailureListener { e ->
-                Toast.makeText(this, "Erro ao agendar: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+        // Start payment flow with Stripe
+        val intent = Intent(this, PaymentActivity::class.java).apply {
+            putExtra("DOCTOR_ID", doctorId)
+            putExtra("PATIENT_ID", patientId)
+            putExtra("SLOT_ID", slotId)
+            putExtra("AMOUNT", totalAmountInCents)
+            putExtra("DOCTOR_NAME", doctor?.name)
+            putExtra("PATIENT_NAME", patientName ?: auth.currentUser?.displayName ?: auth.currentUser?.email ?: "Paciente")
+            putExtra("START_TIME", slot?.startTime?.toDate()?.time ?: 0L)
+            putExtra("END_TIME", slot?.endTime?.toDate()?.time ?: 0L)
+        }
+        
+        startActivity(intent)
+        finish() // Close this activity to prevent back navigation
     }
 }
