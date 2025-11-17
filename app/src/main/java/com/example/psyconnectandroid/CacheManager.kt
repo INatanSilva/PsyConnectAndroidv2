@@ -13,11 +13,14 @@ import java.util.concurrent.ConcurrentHashMap
 object CacheManager {
     
     // Cache em memória (rápido)
-    private val memoryCache = ConcurrentHashMap<String, CacheEntry>()
+    @PublishedApi
+    internal val memoryCache = ConcurrentHashMap<String, CacheEntry>()
     
     // SharedPreferences para persistência
-    private lateinit var prefs: SharedPreferences
-    private val gson = Gson()
+    @PublishedApi
+    internal lateinit var prefs: SharedPreferences
+    @PublishedApi
+    internal val gson = Gson()
     
     // Tempo de expiração padrão (30 minutos)
     private const val DEFAULT_EXPIRATION_MS = 30 * 60 * 1000L
@@ -136,7 +139,8 @@ object CacheManager {
     /**
      * Classe interna para armazenar dados do cache
      */
-    private data class CacheEntry(
+    @PublishedApi
+    internal data class CacheEntry(
         val data: String,
         val timestamp: Long,
         val expirationMs: Long
