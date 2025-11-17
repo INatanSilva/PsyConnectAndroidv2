@@ -4,66 +4,117 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="8dp"
-    android:layout_marginTop="4dp"
-    android:layout_marginEnd="8dp"
-    android:layout_marginBottom="4dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    android:layout_marginStart="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <ImageView
-            android:id="@+id/ivAppointmentDoctorPhoto"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:scaleType="centerCrop"
-            tools:src="@drawable/ic_person" />
-
+        <!-- Header: Doctor Photo, Name and Status -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="16dp">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <ImageView
+                android:id="@+id/ivAppointmentDoctorPhoto"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:scaleType="centerCrop"
+                tools:src="@drawable/ic_person" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp">
+
+                <TextView
+                    android:id="@+id/tvAppointmentDoctorName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    tools:text="Dr. Nome do Doutor" />
+
+                <TextView
+                    android:id="@+id/tvAppointmentSpecialization"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp"
+                    android:layout_marginTop="2dp"
+                    tools:text="Psicologia" />
+
+            </LinearLayout>
 
             <TextView
-                android:id="@+id/tvAppointmentDoctorName"
+                android:id="@+id/tvAppointmentStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
                 android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                tools:text="Dr. Nome do Doutor" />
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:background="@drawable/bg_status_confirmed"
+                tools:text="Agendada" />
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/light_gray"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Date and Time -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_calendar"
+                android:tint="@color/primary_blue"
+                android:layout_marginEnd="8dp" />
 
             <TextView
                 android:id="@+id/tvAppointmentDateTime"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:textColor="@color/text_secondary"
-                android:drawableStart="@drawable/ic_calendar"
-                android:drawablePadding="4dp"
-                app:drawableTint="@color/text_secondary"
-                tools:text="24 de Julho, 10:00" />
-        </LinearLayout>
+                android:layout_weight="1"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                tools:text="27 de outubro, 15:17" />
 
-        <TextView
-            android:id="@+id/tvAppointmentStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-            android:textStyle="bold"
-            android:textColor="@color/white"
-            tools:text="Confirmada"
-            tools:background="@drawable/bg_status_confirmed" />
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_arrow_forward"
+                android:tint="@color/text_secondary" />
+
+        </LinearLayout>
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

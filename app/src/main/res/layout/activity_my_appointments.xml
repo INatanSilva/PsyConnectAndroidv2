@@ -5,32 +5,97 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/light_gray"
+    android:background="@color/white"
     tools:context=".MyAppointmentsActivity">
 
-    <!-- Toolbar -->
-    <com.google.android.material.appbar.AppBarLayout
+    <!-- Custom Header -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:background="@color/white">
 
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbarAppointments"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            app:title="Minhas Consultas"
-            app:navigationIcon="@drawable/ic_arrow_back"/>
+        <ImageView
+            android:id="@+id/btnBack"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_arrow_back"
+            android:tint="@color/text_primary"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="4dp" />
 
-    </com.google.android.material.appbar.AppBarLayout>
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Minhas Consultas"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginStart="12dp" />
+
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/light_gray" />
 
     <!-- Appointments List -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvAppointments"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="8dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         android:clipToPadding="false"
         tools:listitem="@layout/item_appointment_card" />
+
+    <!-- Empty State (Initially Hidden) -->
+    <LinearLayout
+        android:id="@+id/emptyStateLayout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/ic_calendar"
+            android:tint="@color/text_secondary"
+            android:alpha="0.5" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nenhuma consulta agendada"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Suas consultas agendadas aparecerão aqui"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginTop="8dp" />
+
+    </LinearLayout>
 
 </LinearLayout>

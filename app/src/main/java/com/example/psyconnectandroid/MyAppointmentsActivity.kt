@@ -1,20 +1,22 @@
 package com.example.psyconnectandroid
 
 import android.os.Bundle
+import android.view.View
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import kotlin.comparisons.nullsLast
 
 class MyAppointmentsActivity : AppCompatActivity() {
 
-    private lateinit var toolbar: Toolbar
+    private lateinit var btnBack: ImageView
     private lateinit var rvAppointments: RecyclerView
+    private lateinit var emptyStateLayout: LinearLayout
     private lateinit var appointmentAdapter: AppointmentAdapter
 
     private val firestore = FirebaseFirestore.getInstance()
@@ -26,20 +28,19 @@ class MyAppointmentsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_my_appointments)
 
         initializeViews()
-        setupToolbar()
+        setupBackButton()
         setupRecyclerView()
         loadAppointments()
     }
 
     private fun initializeViews() {
-        toolbar = findViewById(R.id.toolbarAppointments)
+        btnBack = findViewById(R.id.btnBack)
         rvAppointments = findViewById(R.id.rvAppointments)
+        emptyStateLayout = findViewById(R.id.emptyStateLayout)
     }
 
-    private fun setupToolbar() {
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        toolbar.setNavigationOnClickListener {
+    private fun setupBackButton() {
+        btnBack.setOnClickListener {
             finish()
         }
     }
@@ -73,7 +74,7 @@ class MyAppointmentsActivity : AppCompatActivity() {
                 
                 if (querySnapshot.isEmpty) {
                     android.util.Log.d("MyAppointmentsActivity", "⚠️ No appointments found")
-                    appointmentAdapter.notifyDataSetChanged()
+                    showEmptyState()
                     return@addOnSuccessListener
                 }
                 
@@ -96,11 +97,29 @@ class MyAppointmentsActivity : AppCompatActivity() {
                 appointments.reverse() // Para ter as mais recentes primeiro (DESCENDING)
                 
                 android.util.Log.d("MyAppointmentsActivity", "✅ Final appointments count: ${appointments.size}")
+                
+                if (appointments.isEmpty()) {
+                    showEmptyState()
+                } else {
+                    showAppointmentsList()
+                }
+                
                 appointmentAdapter.notifyDataSetChanged()
             }
             .addOnFailureListener { e ->
                 android.util.Log.e("MyAppointmentsActivity", "❌ Error loading appointments", e)
                 Toast.makeText(this, "Erro ao carregar consultas: ${e.message}", Toast.LENGTH_LONG).show()
+                showEmptyState()
             }
+    }
+    
+    private fun showEmptyState() {
+        rvAppointments.visibility = View.GONE
+        emptyStateLayout.visibility = View.VISIBLE
+    }
+    
+    private fun showAppointmentsList() {
+        rvAppointments.visibility = View.VISIBLE
+        emptyStateLayout.visibility = View.GONE
     }
 }

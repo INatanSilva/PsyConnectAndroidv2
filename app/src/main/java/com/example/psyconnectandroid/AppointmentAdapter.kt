@@ -42,6 +42,7 @@ class AppointmentAdapter(
     inner class AppointmentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val ivPhoto: ImageView = itemView.findViewById(R.id.ivAppointmentDoctorPhoto)
         private val tvName: TextView = itemView.findViewById(R.id.tvAppointmentDoctorName)
+        private val tvSpecialization: TextView = itemView.findViewById(R.id.tvAppointmentSpecialization)
         private val tvDateTime: TextView = itemView.findViewById(R.id.tvAppointmentDateTime)
         private val tvStatus: TextView = itemView.findViewById(R.id.tvAppointmentStatus)
 
@@ -49,12 +50,24 @@ class AppointmentAdapter(
             // Display patient name for doctors, and doctor name for patients
             tvName.text = if (userType == UserType.PSYCHOLOGIST) appointment.patientName else appointment.doctorName
 
+            // Load and display specialization for patient view
+            if (userType == UserType.PATIENT && appointment.doctorId.isNotEmpty()) {
+                loadDoctorSpecialization(appointment.doctorId, tvSpecialization)
+            } else {
+                tvSpecialization.visibility = View.GONE
+            }
+
             appointment.startTime?.toDate()?.let {
                 val format = SimpleDateFormat("d 'de' MMMM, HH:mm", Locale("pt", "BR"))
                 tvDateTime.text = format.format(it)
             }
 
-            tvStatus.text = appointment.status.replaceFirstChar { it.titlecase() }
+            tvStatus.text = when (appointment.status.lowercase()) {
+                "agendada", "scheduled", "confirmed" -> "Agendada"
+                "completed", "completada", "concluída" -> "Concluída"
+                "cancelled", "cancelada" -> "Cancelada"
+                else -> "Pendente"
+            }
             tvStatus.background = getStatusDrawable(itemView.context, appointment.status)
 
             // Carregar foto do doutor para pacientes, ou foto do paciente para doutores
@@ -171,6 +184,26 @@ class AppointmentAdapter(
                         .load(R.drawable.ic_person)
                         .circleCrop()
                         .into(imageView)
+                }
+        }
+        
+        private fun loadDoctorSpecialization(doctorId: String, textView: TextView) {
+            firestore.collection("doutores").document(doctorId).get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val specialization = document.getString("specialization")
+                            ?: document.getString("specialisation")
+                            ?: document.getString("specialty")
+                            ?: "Especialista"
+                        
+                        textView.text = specialization
+                        textView.visibility = View.VISIBLE
+                    } else {
+                        textView.visibility = View.GONE
+                    }
+                }
+                .addOnFailureListener {
+                    textView.visibility = View.GONE
                 }
         }
 
