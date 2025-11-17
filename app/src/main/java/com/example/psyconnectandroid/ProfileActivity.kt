@@ -14,9 +14,13 @@ class ProfileActivity : AppCompatActivity() {
 
     private lateinit var btnBack: ImageView
     private lateinit var ivProfilePhoto: ImageView
+    private lateinit var ivCameraIcon: ImageView
     private lateinit var tvProfileName: TextView
     private lateinit var tvProfileEmail: TextView
-    private lateinit var btnLogout: Button
+    private lateinit var btnEditProfile: android.view.View
+    private lateinit var btnNotifications: android.view.View
+    private lateinit var btnPrivacy: android.view.View
+    private lateinit var btnLogout: android.view.View
 
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
@@ -33,14 +37,38 @@ class ProfileActivity : AppCompatActivity() {
     private fun initializeViews() {
         btnBack = findViewById(R.id.btnBack)
         ivProfilePhoto = findViewById(R.id.ivProfilePhoto)
+        ivCameraIcon = findViewById(R.id.ivCameraIcon)
         tvProfileName = findViewById(R.id.tvProfileName)
         tvProfileEmail = findViewById(R.id.tvProfileEmail)
+        btnEditProfile = findViewById(R.id.btnEditProfile)
+        btnNotifications = findViewById(R.id.btnNotifications)
+        btnPrivacy = findViewById(R.id.btnPrivacy)
         btnLogout = findViewById(R.id.btnLogout)
     }
 
     private fun setupListeners() {
         btnBack.setOnClickListener {
             finish()
+        }
+
+        ivCameraIcon.setOnClickListener {
+            // TODO: Implementar seleção de foto
+            android.widget.Toast.makeText(this, "Funcionalidade de editar foto em breve", android.widget.Toast.LENGTH_SHORT).show()
+        }
+
+        btnEditProfile.setOnClickListener {
+            // TODO: Implementar edição de perfil
+            android.widget.Toast.makeText(this, "Funcionalidade de editar perfil em breve", android.widget.Toast.LENGTH_SHORT).show()
+        }
+
+        btnNotifications.setOnClickListener {
+            // TODO: Implementar configurações de notificações
+            android.widget.Toast.makeText(this, "Configurações de notificações em breve", android.widget.Toast.LENGTH_SHORT).show()
+        }
+
+        btnPrivacy.setOnClickListener {
+            // TODO: Implementar configurações de privacidade
+            android.widget.Toast.makeText(this, "Configurações de privacidade em breve", android.widget.Toast.LENGTH_SHORT).show()
         }
 
         btnLogout.setOnClickListener {
@@ -56,13 +84,7 @@ class ProfileActivity : AppCompatActivity() {
             // Tentar carregar do cache primeiro
             val cachedPhoto = PhotoCache.get(currentUser.uid)
             if (cachedPhoto != null && cachedPhoto.isNotEmpty()) {
-                Glide.with(this)
-                    .load(cachedPhoto)
-                    .placeholder(R.drawable.ic_person)
-                    .error(R.drawable.ic_person)
-                    .circleCrop()
-                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
-                    .into(ivProfilePhoto)
+                loadProfilePhoto(cachedPhoto)
             }
 
             // Buscar dados do Firestore
@@ -84,13 +106,9 @@ class ProfileActivity : AppCompatActivity() {
 
                         if (photoUrl.isNotEmpty()) {
                             PhotoCache.put(currentUser.uid, photoUrl)
-                            Glide.with(this)
-                                .load(photoUrl)
-                                .placeholder(R.drawable.ic_person)
-                                .error(R.drawable.ic_person)
-                                .circleCrop()
-                                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
-                                .into(ivProfilePhoto)
+                            loadProfilePhoto(photoUrl)
+                        } else {
+                            loadProfilePhoto(null)
                         }
                     } else {
                         tvProfileName.text = currentUser.displayName ?: "Usuário"
@@ -99,6 +117,23 @@ class ProfileActivity : AppCompatActivity() {
                 .addOnFailureListener {
                     tvProfileName.text = currentUser.displayName ?: "Usuário"
                 }
+        }
+    }
+
+    private fun loadProfilePhoto(photoUrl: String?) {
+        if (photoUrl != null && photoUrl.isNotEmpty()) {
+            Glide.with(this)
+                .load(photoUrl)
+                .placeholder(R.drawable.ic_person)
+                .error(R.drawable.ic_person)
+                .circleCrop()
+                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                .into(ivProfilePhoto)
+        } else {
+            Glide.with(this)
+                .load(R.drawable.ic_person)
+                .circleCrop()
+                .into(ivProfilePhoto)
         }
     }
 
