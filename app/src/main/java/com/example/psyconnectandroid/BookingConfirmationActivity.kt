@@ -151,10 +151,10 @@ class BookingConfirmationActivity : AppCompatActivity() {
             
             // Assuming price is part of doctor's profile
             val price = it.priceEurCents / 100.0
-            val serviceFee = 2.50 // Example service fee
-            val total = price + serviceFee
+            // Patient pays the full consultation price
+            // Platform takes 10% from doctor's earnings
             tvPrice.text = String.format(Locale.US, "%.2f €", price)
-            tvTotal.text = String.format(Locale.US, "%.2f €", total)
+            tvTotal.text = String.format(Locale.US, "%.2f €", price)
         }
     }
 
@@ -179,10 +179,10 @@ class BookingConfirmationActivity : AppCompatActivity() {
             return
         }
 
-        // Calculate total amount in cents (price + service fee)
+        // Patient pays the consultation price
+        // Platform will take 10% from the payment to the doctor
         val priceInCents = doctor!!.priceEurCents
-        val serviceFeeInCents = 250 // 2.50 EUR service fee
-        val totalAmountInCents = priceInCents + serviceFeeInCents
+        val totalAmountInCents = priceInCents // No additional fee for patient
         
         android.util.Log.d("BookingConfirmation", "Starting payment flow - Amount: $totalAmountInCents cents")
 

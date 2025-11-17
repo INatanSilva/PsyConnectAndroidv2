@@ -116,12 +116,32 @@ Response:
 
 ## 💰 Cálculo de Valores
 
+### Modelo de Negócio
+A plataforma retém **10% do valor da consulta** do pagamento ao doutor.
+
 ### Preço Total
 ```kotlin
 val priceInCents = doctor.priceEurCents  // Ex: 5000 (50.00 EUR)
-val serviceFeeInCents = 250               // Taxa de serviço: 2.50 EUR
-val totalAmountInCents = priceInCents + serviceFeeInCents  // 5250 (52.50 EUR)
+val totalAmountInCents = priceInCents    // Paciente paga o valor da consulta
+val platformFee = (priceInCents * 0.10).toInt()  // 10% fica com a plataforma
+val doctorReceives = priceInCents - platformFee  // 90% vai para o doutor
 ```
+
+### Exemplos de Cálculo
+- Consulta de €50,00:
+  - Paciente paga: **€50,00**
+  - Plataforma recebe: **€5,00** (10%)
+  - Doutor recebe: **€45,00** (90%)
+  
+- Consulta de €80,00:
+  - Paciente paga: **€80,00**
+  - Plataforma recebe: **€8,00** (10%)
+  - Doutor recebe: **€72,00** (90%)
+  
+- Consulta de €100,00:
+  - Paciente paga: **€100,00**
+  - Plataforma recebe: **€10,00** (10%)
+  - Doutor recebe: **€90,00** (90%)
 
 ## 📱 Deep Links
 

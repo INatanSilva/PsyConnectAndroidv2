@@ -48,12 +48,16 @@ object StripeService {
             connection.readTimeout = 30000
             
             // Create JSON body - mesma estrutura do iOS
+            // Platform takes 10% from the payment
+            val platformFee = (amount * 0.10).toInt()
+            
             val jsonBody = JSONObject().apply {
                 put("amount", amount)
                 put("currency", currency)
                 put("providerAccountId", stripeAccountId)  // iOS usa providerAccountId
                 put("appointmentId", appointmentId)
                 put("description", "$description - $appointmentId")
+                put("applicationFeeAmount", platformFee)  // 10% platform fee
                 put("paymentMethodTypes", JSONArray().apply {
                     put("card")
                 })
