@@ -17,7 +17,7 @@ class MyAppointmentsActivity : AppCompatActivity() {
     private lateinit var btnBack: ImageView
     private lateinit var rvAppointments: RecyclerView
     private lateinit var emptyStateLayout: LinearLayout
-    private lateinit var skeletonAppointmentsLayout: LinearLayout
+    private lateinit var skeletonAppointmentsLayout: android.widget.ScrollView
     private lateinit var appointmentAdapter: AppointmentAdapter
 
     private val firestore = FirebaseFirestore.getInstance()
@@ -47,6 +47,10 @@ class MyAppointmentsActivity : AppCompatActivity() {
     private fun startSkeletonAnimation() {
         val animation = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.skeleton_shimmer)
         skeletonAppointmentsLayout.startAnimation(animation)
+    }
+    
+    private fun stopSkeletonAnimation() {
+        skeletonAppointmentsLayout.clearAnimation()
     }
 
     private fun setupBackButton() {
@@ -108,13 +112,13 @@ class MyAppointmentsActivity : AppCompatActivity() {
                 
                 android.util.Log.d("MyAppointmentsActivity", "✅ Final appointments count: ${appointments.size}")
                 
+                appointmentAdapter.notifyDataSetChanged()
+                
                 if (appointments.isEmpty()) {
                     showEmptyState()
                 } else {
                     showAppointmentsList()
                 }
-                
-                appointmentAdapter.notifyDataSetChanged()
             }
             .addOnFailureListener { e ->
                 android.util.Log.e("MyAppointmentsActivity", "❌ Error loading appointments", e)
@@ -124,12 +128,14 @@ class MyAppointmentsActivity : AppCompatActivity() {
     }
     
     private fun showEmptyState() {
+        stopSkeletonAnimation()
         skeletonAppointmentsLayout.visibility = View.GONE
         rvAppointments.visibility = View.GONE
         emptyStateLayout.visibility = View.VISIBLE
     }
     
     private fun showAppointmentsList() {
+        stopSkeletonAnimation()
         skeletonAppointmentsLayout.visibility = View.GONE
         rvAppointments.visibility = View.VISIBLE
         emptyStateLayout.visibility = View.GONE
