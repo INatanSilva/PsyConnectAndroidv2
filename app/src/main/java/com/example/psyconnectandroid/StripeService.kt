@@ -1,6 +1,7 @@
 package com.example.psyconnectandroid
 
 import android.util.Log
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -11,6 +12,8 @@ import java.net.URL
 /**
  * Service to interact with Stripe payment gateway API
  * Base URL: https://stripe-backend-psyconnect.onrender.com
+ * 
+ * This implementation follows the same structure as the iOS app
  */
 object StripeService {
     
@@ -18,44 +21,47 @@ object StripeService {
     private const val TAG = "StripeService"
     
     /**
-     * Creates a Payment Intent for an appointment
-     * @param amount Amount in cents (e.g., 5000 for 50.00 EUR)
+     * Creates a Payment Intent for an appointment (same structure as iOS)
+     * @param amount Amount in cents (e.g., 2000 for 20.00 EUR)
      * @param currency Currency code (e.g., "eur")
-     * @param doctorId ID of the doctor
-     * @param patientId ID of the patient
-     * @param appointmentId ID of the appointment (optional, can be null before creation)
-     * @return JSONObject with clientSecret and paymentIntentId, or null if error
+     * @param stripeAccountId Stripe Connect Account ID of the doctor (providerAccountId)
+     * @param appointmentId ID of the appointment
+     * @param description Description of the payment
+     * @return PaymentIntentResponse with clientSecret, paymentIntentId, and publishableKey
      */
     fun createPaymentIntent(
         amount: Int,
         currency: String = "eur",
-        doctorId: String,
-        patientId: String,
-        appointmentId: String? = null
+        stripeAccountId: String,
+        appointmentId: String,
+        description: String = "Consulta médica"
     ): Result<PaymentIntentResponse> {
         return try {
-            val url = URL("$BASE_URL/createPaymentIntent")
+            val url = URL("$BASE_URL/api/create-payment-intent")
             val connection = url.openConnection() as HttpURLConnection
             
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "application/json")
             connection.doOutput = true
             connection.doInput = true
-            connection.connectTimeout = 15000
-            connection.readTimeout = 15000
+            connection.connectTimeout = 30000 // 30 segundos para cold start
+            connection.readTimeout = 30000
             
-            // Create JSON body
+            // Create JSON body - mesma estrutura do iOS
             val jsonBody = JSONObject().apply {
                 put("amount", amount)
                 put("currency", currency)
-                put("doctorId", doctorId)
-                put("patientId", patientId)
-                if (appointmentId != null) {
-                    put("appointmentId", appointmentId)
-                }
+                put("providerAccountId", stripeAccountId)  // iOS usa providerAccountId
+                put("appointmentId", appointmentId)
+                put("description", "$description - $appointmentId")
+                put("paymentMethodTypes", JSONArray().apply {
+                    put("card")
+                })
             }
             
-            Log.d(TAG, "Creating Payment Intent: $jsonBody")
+            Log.d(TAG, "🚀 Creating Payment Intent...")
+            Log.d(TAG, "   URL: $url")
+            Log.d(TAG, "   Body: $jsonBody")
             
             // Send request
             val writer = OutputStreamWriter(connection.outputStream)
@@ -65,7 +71,7 @@ object StripeService {
             
             // Read response
             val responseCode = connection.responseCode
-            Log.d(TAG, "Response Code: $responseCode")
+            Log.d(TAG, "📡 Response Code: $responseCode")
             
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val reader = BufferedReader(InputStreamReader(connection.inputStream))
@@ -77,14 +83,17 @@ object StripeService {
                 reader.close()
                 
                 val jsonResponse = JSONObject(response.toString())
-                Log.d(TAG, "Payment Intent Created: $jsonResponse")
+                Log.d(TAG, "✅ Payment Intent Created")
+                Log.d(TAG, "   Response: $jsonResponse")
                 
+                // iOS recebe: clientSecret, paymentIntentId, publishableKey
                 val clientSecret = jsonResponse.getString("clientSecret")
                 val paymentIntentId = jsonResponse.getString("paymentIntentId")
+                val publishableKey = jsonResponse.getString("publishableKey")
                 
-                Result.success(PaymentIntentResponse(clientSecret, paymentIntentId))
+                Result.success(PaymentIntentResponse(clientSecret, paymentIntentId, publishableKey))
             } else {
-                val errorReader = BufferedReader(InputStreamReader(connection.errorStream))
+                val errorReader = BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream))
                 val errorResponse = StringBuilder()
                 var line: String?
                 while (errorReader.readLine().also { line = it } != null) {
@@ -92,252 +101,25 @@ object StripeService {
                 }
                 errorReader.close()
                 
-                Log.e(TAG, "Error creating Payment Intent: $errorResponse")
+                Log.e(TAG, "❌ Error creating Payment Intent: HTTP $responseCode")
+                Log.e(TAG, "   Error: $errorResponse")
                 Result.failure(Exception("HTTP Error $responseCode: $errorResponse"))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Exception creating Payment Intent", e)
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * Creates a Checkout Session (fallback method)
-     * @param amount Amount in cents
-     * @param currency Currency code
-     * @param doctorId ID of the doctor
-     * @param patientId ID of the patient
-     * @param successUrl URL to redirect on success
-     * @param cancelUrl URL to redirect on cancel
-     * @return JSONObject with session URL and sessionId, or null if error
-     */
-    fun createCheckoutSession(
-        amount: Int,
-        currency: String = "eur",
-        doctorId: String,
-        patientId: String,
-        successUrl: String,
-        cancelUrl: String
-    ): Result<CheckoutSessionResponse> {
-        return try {
-            val url = URL("$BASE_URL/createCheckoutSession")
-            val connection = url.openConnection() as HttpURLConnection
-            
-            connection.requestMethod = "POST"
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.doOutput = true
-            connection.doInput = true
-            connection.connectTimeout = 15000
-            connection.readTimeout = 15000
-            
-            // Create JSON body
-            val jsonBody = JSONObject().apply {
-                put("amount", amount)
-                put("currency", currency)
-                put("doctorId", doctorId)
-                put("patientId", patientId)
-                put("successUrl", successUrl)
-                put("cancelUrl", cancelUrl)
-            }
-            
-            Log.d(TAG, "Creating Checkout Session: $jsonBody")
-            
-            // Send request
-            val writer = OutputStreamWriter(connection.outputStream)
-            writer.write(jsonBody.toString())
-            writer.flush()
-            writer.close()
-            
-            // Read response
-            val responseCode = connection.responseCode
-            Log.d(TAG, "Response Code: $responseCode")
-            
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val reader = BufferedReader(InputStreamReader(connection.inputStream))
-                val response = StringBuilder()
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    response.append(line)
-                }
-                reader.close()
-                
-                val jsonResponse = JSONObject(response.toString())
-                Log.d(TAG, "Checkout Session Created: $jsonResponse")
-                
-                val sessionUrl = jsonResponse.getString("url")
-                val sessionId = jsonResponse.getString("sessionId")
-                
-                Result.success(CheckoutSessionResponse(sessionUrl, sessionId))
-            } else {
-                val errorReader = BufferedReader(InputStreamReader(connection.errorStream))
-                val errorResponse = StringBuilder()
-                var line: String?
-                while (errorReader.readLine().also { line = it } != null) {
-                    errorResponse.append(line)
-                }
-                errorReader.close()
-                
-                Log.e(TAG, "Error creating Checkout Session: $errorResponse")
-                Result.failure(Exception("HTTP Error $responseCode: $errorResponse"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception creating Checkout Session", e)
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * Checks the status of a payment
-     * @param paymentIntentId ID of the payment intent
-     * @return Payment status information
-     */
-    fun checkPaymentStatus(paymentIntentId: String): Result<PaymentStatusResponse> {
-        return try {
-            val url = URL("$BASE_URL/checkPaymentStatus?paymentIntentId=$paymentIntentId")
-            val connection = url.openConnection() as HttpURLConnection
-            
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 15000
-            connection.readTimeout = 15000
-            
-            Log.d(TAG, "Checking Payment Status: $paymentIntentId")
-            
-            // Read response
-            val responseCode = connection.responseCode
-            Log.d(TAG, "Response Code: $responseCode")
-            
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val reader = BufferedReader(InputStreamReader(connection.inputStream))
-                val response = StringBuilder()
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    response.append(line)
-                }
-                reader.close()
-                
-                val jsonResponse = JSONObject(response.toString())
-                Log.d(TAG, "Payment Status: $jsonResponse")
-                
-                val status = jsonResponse.getString("status")
-                val amount = jsonResponse.optInt("amount", 0)
-                val currency = jsonResponse.optString("currency", "eur")
-                
-                Result.success(PaymentStatusResponse(status, amount, currency))
-            } else {
-                val errorReader = BufferedReader(InputStreamReader(connection.errorStream))
-                val errorResponse = StringBuilder()
-                var line: String?
-                while (errorReader.readLine().also { line = it } != null) {
-                    errorResponse.append(line)
-                }
-                errorReader.close()
-                
-                Log.e(TAG, "Error checking Payment Status: $errorResponse")
-                Result.failure(Exception("HTTP Error $responseCode: $errorResponse"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception checking Payment Status", e)
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * Creates an onboarding link for doctors (Stripe Connect)
-     * @param doctorId ID of the doctor
-     * @param email Doctor's email
-     * @param refreshUrl URL to redirect for refreshing
-     * @param returnUrl URL to redirect after completion
-     * @return Onboarding URL
-     */
-    fun createOnboardingLink(
-        doctorId: String,
-        email: String,
-        refreshUrl: String,
-        returnUrl: String
-    ): Result<OnboardingLinkResponse> {
-        return try {
-            val url = URL("$BASE_URL/createOnboardingLink")
-            val connection = url.openConnection() as HttpURLConnection
-            
-            connection.requestMethod = "POST"
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.doOutput = true
-            connection.doInput = true
-            connection.connectTimeout = 15000
-            connection.readTimeout = 15000
-            
-            // Create JSON body
-            val jsonBody = JSONObject().apply {
-                put("doctorId", doctorId)
-                put("email", email)
-                put("refreshUrl", refreshUrl)
-                put("returnUrl", returnUrl)
-            }
-            
-            Log.d(TAG, "Creating Onboarding Link: $jsonBody")
-            
-            // Send request
-            val writer = OutputStreamWriter(connection.outputStream)
-            writer.write(jsonBody.toString())
-            writer.flush()
-            writer.close()
-            
-            // Read response
-            val responseCode = connection.responseCode
-            Log.d(TAG, "Response Code: $responseCode")
-            
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val reader = BufferedReader(InputStreamReader(connection.inputStream))
-                val response = StringBuilder()
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    response.append(line)
-                }
-                reader.close()
-                
-                val jsonResponse = JSONObject(response.toString())
-                Log.d(TAG, "Onboarding Link Created: $jsonResponse")
-                
-                val onboardingUrl = jsonResponse.getString("url")
-                
-                Result.success(OnboardingLinkResponse(onboardingUrl))
-            } else {
-                val errorReader = BufferedReader(InputStreamReader(connection.errorStream))
-                val errorResponse = StringBuilder()
-                var line: String?
-                while (errorReader.readLine().also { line = it } != null) {
-                    errorResponse.append(line)
-                }
-                errorReader.close()
-                
-                Log.e(TAG, "Error creating Onboarding Link: $errorResponse")
-                Result.failure(Exception("HTTP Error $responseCode: $errorResponse"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception creating Onboarding Link", e)
+            Log.e(TAG, "❌ Exception creating Payment Intent", e)
             Result.failure(e)
         }
     }
 }
 
-// Data classes for responses
+/**
+ * Response from creating a Payment Intent
+ * @param clientSecret The client secret to use with Stripe SDK
+ * @param paymentIntentId The payment intent ID
+ * @param publishableKey The Stripe publishable key
+ */
 data class PaymentIntentResponse(
     val clientSecret: String,
-    val paymentIntentId: String
+    val paymentIntentId: String,
+    val publishableKey: String
 )
-
-data class CheckoutSessionResponse(
-    val sessionUrl: String,
-    val sessionId: String
-)
-
-data class PaymentStatusResponse(
-    val status: String,
-    val amount: Int,
-    val currency: String
-)
-
-data class OnboardingLinkResponse(
-    val onboardingUrl: String
-)
-

@@ -54,6 +54,9 @@ class BookingConfirmationActivity : AppCompatActivity() {
         loadData()
         
         btnConfirm.setOnClickListener {
+            // Disable button to prevent double clicks
+            btnConfirm.isEnabled = false
+            btnConfirm.text = "Processando..."
             createAppointment()
         }
     }

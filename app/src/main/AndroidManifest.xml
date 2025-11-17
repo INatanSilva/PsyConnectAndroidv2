@@ -55,17 +55,10 @@
             
         <activity
             android:name=".PaymentActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="Pagamento"
             android:parentActivityName=".BookingConfirmationActivity"
-            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="psyconnect" android:host="payment" />
-            </intent-filter>
-        </activity>
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
             
         <activity
             android:name=".MyAppointmentsActivity"

@@ -58,4 +58,7 @@ dependencies {
     
     // Glide for image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    
+    // Stripe Android SDK
+    implementation("com.stripe:stripe-android:20.49.0")
 }

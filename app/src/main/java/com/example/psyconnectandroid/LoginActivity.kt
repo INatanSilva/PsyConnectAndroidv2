@@ -38,6 +38,20 @@ class LoginActivity : AppCompatActivity() {
     
     private fun setupClickListeners() {
         loginButton.setOnClickListener {
+            // Animação de clique no botão
+            it.animate()
+                .scaleX(0.95f)
+                .scaleY(0.95f)
+                .setDuration(100)
+                .withEndAction {
+                    it.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(100)
+                        .start()
+                }
+                .start()
+            
             loginUser()
         }
         
@@ -53,15 +67,71 @@ class LoginActivity : AppCompatActivity() {
         
         if (email.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, "Por favor, preencha todos os campos.", Toast.LENGTH_SHORT).show()
+            // Shake animation para erro
+            loginButton.animate()
+                .translationX(-10f)
+                .setDuration(50)
+                .withEndAction {
+                    loginButton.animate().translationX(10f).setDuration(50)
+                        .withEndAction {
+                            loginButton.animate().translationX(-10f).setDuration(50)
+                                .withEndAction {
+                                    loginButton.animate().translationX(10f).setDuration(50)
+                                        .withEndAction {
+                                            loginButton.animate().translationX(0f).setDuration(50).start()
+                                        }.start()
+                                }.start()
+                        }.start()
+                }.start()
             return
         }
         
+        // Desabilitar botão e mostrar loading
+        loginButton.isEnabled = false
+        val originalText = loginButton.text
+        loginButton.text = "Entrando..."
+        
+        // Animação de loading (pulse)
+        loginButton.animate()
+            .alpha(0.7f)
+            .setDuration(500)
+            .withEndAction {
+                loginButton.animate()
+                    .alpha(1f)
+                    .setDuration(500)
+                    .start()
+            }
+            .start()
+        
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
+                loginButton.isEnabled = true
+                loginButton.text = originalText
+                loginButton.alpha = 1f
+                
                 if (task.isSuccessful) {
-                    navigateToUserHome()
+                    // Animação de sucesso
+                    loginButton.animate()
+                        .scaleX(1.1f)
+                        .scaleY(1.1f)
+                        .alpha(0f)
+                        .setDuration(300)
+                        .withEndAction {
+                            navigateToUserHome()
+                        }
+                        .start()
                 } else {
+                    // Animação de erro (shake)
                     Toast.makeText(this, "Erro no login: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    loginButton.animate()
+                        .translationX(-20f)
+                        .setDuration(100)
+                        .withEndAction {
+                            loginButton.animate().translationX(20f).setDuration(100)
+                                .withEndAction {
+                                    loginButton.animate().translationX(0f).setDuration(100).start()
+                                }.start()
+                        }.start()
                 }
             }
     }

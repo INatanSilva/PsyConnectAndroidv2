@@ -1,26 +1,30 @@
 package com.example.psyconnectandroid
 
-import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.Bitmap
 import android.os.Bundle
+import android.util.Log
 import android.view.View
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.google.firebase.firestore.FirebaseFirestore
+import com.stripe.android.PaymentConfiguration
+import com.stripe.android.paymentsheet.PaymentSheet
+import com.stripe.android.paymentsheet.PaymentSheetResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
+/**
+ * PaymentActivity - Handles payment processing using Stripe PaymentSheet
+ * Same approach as iOS app
+ */
 class PaymentActivity : AppCompatActivity() {
 
-    private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
     private lateinit var toolbar: Toolbar
     private val firestore = FirebaseFirestore.getInstance()
@@ -35,9 +39,10 @@ class PaymentActivity : AppCompatActivity() {
     private var appointmentEndTime: com.google.firebase.Timestamp? = null
     
     private var paymentIntentId: String? = null
-    private var sessionId: String? = null
+    private var appointmentId: String? = null
+    
+    private lateinit var paymentSheet: PaymentSheet
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_payment)
@@ -67,17 +72,17 @@ class PaymentActivity : AppCompatActivity() {
 
         initializeViews()
         setupToolbar()
+        
+        // Initialize Stripe PaymentSheet
+        paymentSheet = PaymentSheet(this, ::onPaymentSheetResult)
+        
+        // Start payment flow
         initializePayment()
     }
 
     private fun initializeViews() {
-        webView = findViewById(R.id.webViewPayment)
         progressBar = findViewById(R.id.progressBarPayment)
         toolbar = findViewById(R.id.toolbarPayment)
-        
-        // Enable JavaScript for Stripe
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
     }
 
     private fun setupToolbar() {
@@ -92,28 +97,75 @@ class PaymentActivity : AppCompatActivity() {
     private fun initializePayment() {
         progressBar.visibility = View.VISIBLE
         
-        // Use Checkout Session (WebView method) as it's simpler for integration
+        Log.d(TAG, "🚀 Iniciando pagamento...")
+        Log.d(TAG, "   Amount: $amount cents (€${amount/100.0})")
+        Log.d(TAG, "   Doctor ID: $doctorId")
+        Log.d(TAG, "   Patient ID: $patientId")
+        
+        // Generate appointment ID
+        appointmentId = UUID.randomUUID().toString().uppercase()
+        Log.d(TAG, "   Appointment ID: $appointmentId")
+        
         CoroutineScope(Dispatchers.IO).launch {
-            val result = StripeService.createCheckoutSession(
-                amount = amount,
-                currency = "eur",
-                doctorId = doctorId!!,
-                patientId = patientId!!,
-                successUrl = "psyconnect://payment/success",
-                cancelUrl = "psyconnect://payment/cancel"
-            )
-            
-            withContext(Dispatchers.Main) {
+            try {
+                // Step 1: Get doctor's Stripe Account ID
+                Log.d(TAG, "📋 Step 1: Getting doctor's Stripe Account ID...")
+                val stripeAccountId = getDoctorStripeAccountId(doctorId!!)
+                
+                if (stripeAccountId == null) {
+                    throw Exception("Médico não tem conta Stripe configurada")
+                }
+                
+                Log.d(TAG, "✅ Stripe Account ID: $stripeAccountId")
+                
+                // Step 2: Create Payment Intent
+                Log.d(TAG, "📋 Step 2: Creating Payment Intent...")
+                val result = StripeService.createPaymentIntent(
+                    amount = amount,
+                    currency = "eur",
+                    stripeAccountId = stripeAccountId,
+                    appointmentId = appointmentId!!,
+                    description = "Consulta médica"
+                )
+                
                 result.onSuccess { response ->
-                    sessionId = response.sessionId
-                    android.util.Log.d("PaymentActivity", "Checkout Session created: ${response.sessionUrl}")
-                    loadPaymentUrl(response.sessionUrl)
+                    Log.d(TAG, "✅ Payment Intent created successfully!")
+                    Log.d(TAG, "   Client Secret: ${response.clientSecret}")
+                    Log.d(TAG, "   Payment Intent ID: ${response.paymentIntentId}")
+                    Log.d(TAG, "   Publishable Key: ${response.publishableKey}")
+                    
+                    paymentIntentId = response.paymentIntentId
+                    
+                    withContext(Dispatchers.Main) {
+                        // Initialize Stripe with publishable key
+                        PaymentConfiguration.init(
+                            applicationContext,
+                            response.publishableKey
+                        )
+                        
+                        // Step 3: Show PaymentSheet
+                        Log.d(TAG, "📋 Step 3: Presenting PaymentSheet...")
+                        presentPaymentSheet(response.clientSecret)
+                    }
                 }.onFailure { error ->
-                    android.util.Log.e("PaymentActivity", "Error creating Checkout Session", error)
+                    Log.e(TAG, "❌ Error creating Payment Intent", error)
+                    withContext(Dispatchers.Main) {
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(
+                            this@PaymentActivity,
+                            "Erro ao iniciar pagamento: ${error.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        finish()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Exception in payment initialization", e)
+                withContext(Dispatchers.Main) {
                     progressBar.visibility = View.GONE
                     Toast.makeText(
                         this@PaymentActivity,
-                        "Erro ao iniciar pagamento: ${error.message}",
+                        "Erro: ${e.message}",
                         Toast.LENGTH_LONG
                     ).show()
                     finish()
@@ -122,78 +174,96 @@ class PaymentActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
-    private fun loadPaymentUrl(url: String) {
-        webView.webViewClient = object : WebViewClient() {
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                super.onPageStarted(view, url, favicon)
+    private suspend fun getDoctorStripeAccountId(doctorId: String): String? {
+        return try {
+            Log.d(TAG, "   Buscando na coleção 'doutores' para ID: $doctorId")
+            
+            val doc = firestore.collection("doutores")
+                .document(doctorId)
+                .get()
+                .await()
+            
+            Log.d(TAG, "   Document exists: ${doc.exists()}")
+            
+            if (!doc.exists()) {
+                Log.e(TAG, "   ❌ Documento do médico não existe na coleção 'doutores'!")
+                return null
+            }
+            
+            // Log todos os dados do documento
+            val allData = doc.data
+            Log.d(TAG, "   📋 Todos os campos do documento:")
+            allData?.forEach { (key, value) ->
+                Log.d(TAG, "      $key: $value (${value?.javaClass?.simpleName})")
+            }
+            
+            // Pegar stripeAccountId
+            val stripeAccountId = doc.getString("stripeAccountId")
+            Log.d(TAG, "   🔑 stripeAccountId extraído: '$stripeAccountId'")
+            
+            // Verificar stripeConfigured (é um boolean)
+            val stripeConfigured = doc.getBoolean("stripeConfigured") ?: false
+            Log.d(TAG, "   ✓ stripeConfigured: $stripeConfigured")
+            
+            Log.d(TAG, "   📊 Validação:")
+            Log.d(TAG, "      stripeConfigured: $stripeConfigured")
+            Log.d(TAG, "      stripeAccountId vazio?: ${stripeAccountId.isNullOrEmpty()}")
+            
+            if (stripeConfigured && !stripeAccountId.isNullOrEmpty()) {
+                Log.d(TAG, "   ✅ Tudo OK! Retornando: $stripeAccountId")
+                return stripeAccountId
+            } else {
+                Log.e(TAG, "   ❌ Falha na validação:")
+                Log.e(TAG, "      stripeConfigured = $stripeConfigured (precisa ser true)")
+                Log.e(TAG, "      stripeAccountId = '$stripeAccountId' (não pode estar vazio)")
+                return null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Exception getting doctor's Stripe Account ID", e)
+            e.printStackTrace()
+            return null
+        }
+    }
+
+    private fun presentPaymentSheet(clientSecret: String) {
+        progressBar.visibility = View.GONE
+        
+        val configuration = PaymentSheet.Configuration.Builder("PsyConnect")
+            .build()
+        
+        paymentSheet.presentWithPaymentIntent(
+            clientSecret,
+            configuration
+        )
+    }
+
+    private fun onPaymentSheetResult(paymentSheetResult: PaymentSheetResult) {
+        when(paymentSheetResult) {
+            is PaymentSheetResult.Completed -> {
+                Log.d(TAG, "✅ Payment completed successfully!")
                 progressBar.visibility = View.VISIBLE
-                
-                android.util.Log.d("PaymentActivity", "Page started: $url")
-                
-                // Check for success/cancel URLs
-                url?.let {
-                    when {
-                        it.startsWith("psyconnect://payment/success") -> {
-                            handlePaymentSuccess()
-                        }
-                        it.startsWith("psyconnect://payment/cancel") -> {
-                            handlePaymentCancel()
-                        }
-                    }
-                }
+                createAppointment()
             }
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                progressBar.visibility = View.GONE
-                android.util.Log.d("PaymentActivity", "Page finished: $url")
+            is PaymentSheetResult.Canceled -> {
+                Log.d(TAG, "⚠️ Payment canceled by user")
+                Toast.makeText(this, "Pagamento cancelado", Toast.LENGTH_SHORT).show()
+                finish()
             }
-
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                val url = request?.url?.toString()
-                
-                android.util.Log.d("PaymentActivity", "URL Loading: $url")
-                
-                url?.let {
-                    when {
-                        it.startsWith("psyconnect://payment/success") -> {
-                            handlePaymentSuccess()
-                            return true
-                        }
-                        it.startsWith("psyconnect://payment/cancel") -> {
-                            handlePaymentCancel()
-                            return true
-                        }
-                    }
-                }
-                
-                return false
+            is PaymentSheetResult.Failed -> {
+                Log.e(TAG, "❌ Payment failed: ${paymentSheetResult.error.message}")
+                Toast.makeText(
+                    this,
+                    "Erro no pagamento: ${paymentSheetResult.error.localizedMessage}",
+                    Toast.LENGTH_LONG
+                ).show()
+                finish()
             }
         }
-        
-        webView.loadUrl(url)
-    }
-
-    private fun handlePaymentSuccess() {
-        android.util.Log.d("PaymentActivity", "✅ Payment successful!")
-        
-        progressBar.visibility = View.VISIBLE
-        
-        // Create appointment after successful payment
-        createAppointment()
-    }
-
-    private fun handlePaymentCancel() {
-        android.util.Log.d("PaymentActivity", "❌ Payment cancelled")
-        Toast.makeText(this, "Pagamento cancelado", Toast.LENGTH_SHORT).show()
-        
-        setResult(RESULT_CANCELED)
-        finish()
     }
 
     private fun createAppointment() {
         val appointment = hashMapOf(
+            "id" to appointmentId,
             "patientId" to patientId,
             "doctorId" to doctorId,
             "startTime" to appointmentStartTime,
@@ -201,30 +271,36 @@ class PaymentActivity : AppCompatActivity() {
             "status" to "confirmed",
             "paymentStatus" to "paid",
             "paymentAmount" to amount,
+            "paymentIntentId" to paymentIntentId,
             "createdAt" to com.google.firebase.Timestamp.now(),
             "doctorName" to doctorName,
-            "patientName" to patientName,
-            "sessionId" to sessionId
+            "patientName" to patientName
         )
 
         firestore.collection("appointments").add(appointment)
             .addOnSuccessListener { documentReference ->
-                android.util.Log.d("PaymentActivity", "✅ Appointment created: ${documentReference.id}")
+                Log.d(TAG, "✅ Appointment created: ${documentReference.id}")
                 
                 // Mark slot as booked
                 if (slotId != null) {
                     firestore.collection("doctorAvailability")
                         .document(slotId!!)
-                        .update("isBooked", true)
+                        .update(mapOf(
+                            "isBooked" to true,
+                            "isAvailable" to false,
+                            "patientId" to patientId,
+                            "patientName" to patientName,
+                            "appointmentId" to appointmentId
+                        ))
                         .addOnSuccessListener {
-                            android.util.Log.d("PaymentActivity", "✅ Slot marked as booked")
+                            Log.d(TAG, "✅ Slot marked as booked")
                         }
                 }
                 
                 progressBar.visibility = View.GONE
                 
                 // Show success message
-                Toast.makeText(this, "Consulta agendada e paga com sucesso!", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "✅ Consulta agendada e paga com sucesso!", Toast.LENGTH_LONG).show()
                 
                 // Return to main activity
                 val intent = Intent(this, PatientActivity::class.java)
@@ -233,23 +309,14 @@ class PaymentActivity : AppCompatActivity() {
                 finish()
             }
             .addOnFailureListener { e ->
-                android.util.Log.e("PaymentActivity", "❌ Error creating appointment", e)
+                Log.e(TAG, "❌ Error creating appointment", e)
                 progressBar.visibility = View.GONE
-                Toast.makeText(this, "Erro ao criar consulta: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Erro ao criar consulta: ${e.message}", Toast.LENGTH_LONG).show()
+                finish()
             }
-    }
-
-    override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
-        }
     }
     
     companion object {
-        const val RESULT_PAYMENT_SUCCESS = 1
-        const val RESULT_PAYMENT_FAILED = 2
+        private const val TAG = "PaymentActivity"
     }
 }
-
