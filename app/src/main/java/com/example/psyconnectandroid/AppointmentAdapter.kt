@@ -90,14 +90,29 @@ class AppointmentAdapter(
         }
         
         private fun loadDoctorPhoto(doctorId: String, imageView: ImageView) {
-            // Verificar cache primeiro
-            val cachedUrl = doctorPhotoCache[doctorId]
+            // Verificar cache de fotos primeiro
+            val cachedUrl = PhotoCache.get(doctorId) ?: doctorPhotoCache[doctorId]
             if (cachedUrl != null && cachedUrl.isNotEmpty()) {
                 Glide.with(itemView.context)
                     .load(cachedUrl)
                     .placeholder(R.drawable.ic_person)
                     .error(R.drawable.ic_person)
                     .circleCrop()
+                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                    .into(imageView)
+                return
+            }
+            
+            // Verificar cache de doctor completo
+            val cachedDoctor = DoctorCache.get(doctorId)
+            if (cachedDoctor != null && cachedDoctor.photoUrl.isNotEmpty()) {
+                PhotoCache.put(doctorId, cachedDoctor.photoUrl)
+                Glide.with(itemView.context)
+                    .load(cachedDoctor.photoUrl)
+                    .placeholder(R.drawable.ic_person)
+                    .error(R.drawable.ic_person)
+                    .circleCrop()
+                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                     .into(imageView)
                 return
             }
@@ -116,6 +131,7 @@ class AppointmentAdapter(
                         // Atualizar cache
                         if (photoUrl.isNotEmpty()) {
                             doctorPhotoCache[doctorId] = photoUrl
+                            PhotoCache.put(doctorId, photoUrl)
                         }
                         
                         // Carregar imagem
@@ -125,6 +141,7 @@ class AppointmentAdapter(
                                 .placeholder(R.drawable.ic_person)
                                 .error(R.drawable.ic_person)
                                 .circleCrop()
+                                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                                 .into(imageView)
                         } else {
                             Glide.with(itemView.context)
@@ -149,6 +166,19 @@ class AppointmentAdapter(
         }
         
         private fun loadPatientPhoto(patientId: String, imageView: ImageView) {
+            // Verificar cache primeiro
+            val cachedUrl = PhotoCache.get(patientId)
+            if (cachedUrl != null && cachedUrl.isNotEmpty()) {
+                Glide.with(itemView.context)
+                    .load(cachedUrl)
+                    .placeholder(R.drawable.ic_person)
+                    .error(R.drawable.ic_person)
+                    .circleCrop()
+                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                    .into(imageView)
+                return
+            }
+            
             // Buscar foto do paciente na coleção pacientes
             firestore.collection("pacientes").document(patientId).get()
                 .addOnSuccessListener { document ->
@@ -159,12 +189,18 @@ class AppointmentAdapter(
                             ?: document.getString("imageUrl")
                             ?: ""
                         
+                        // Salvar no cache
+                        if (photoUrl.isNotEmpty()) {
+                            PhotoCache.put(patientId, photoUrl)
+                        }
+                        
                         if (photoUrl.isNotEmpty()) {
                             Glide.with(itemView.context)
                                 .load(photoUrl)
                                 .placeholder(R.drawable.ic_person)
                                 .error(R.drawable.ic_person)
                                 .circleCrop()
+                                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                                 .into(imageView)
                         } else {
                             Glide.with(itemView.context)

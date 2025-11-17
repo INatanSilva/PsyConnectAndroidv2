@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/skeletonDoctorProfile"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/white">
+
+    <!-- Profile Photo Skeleton -->
+    <View
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="32dp"
+        android:background="@drawable/skeleton_background" />
+
+    <!-- Name Skeleton -->
+    <View
+        android:layout_width="180dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/skeleton_background" />
+
+    <!-- Specialization Skeleton -->
+    <View
+        android:layout_width="140dp"
+        android:layout_height="18dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/skeleton_background" />
+
+    <!-- Rating Skeleton -->
+    <View
+        android:layout_width="60dp"
+        android:layout_height="16dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/skeleton_background" />
+
+    <!-- About Section Skeleton -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:layout_marginTop="24dp"
+        android:background="@drawable/skeleton_background" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/skeleton_background" />
+
+    <View
+        android:layout_width="240dp"
+        android:layout_height="16dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/skeleton_background" />
+
+    <!-- Availability Title Skeleton -->
+    <View
+        android:layout_width="140dp"
+        android:layout_height="18dp"
+        android:layout_marginTop="24dp"
+        android:background="@drawable/skeleton_background" />
+
+    <!-- Availability Slots Skeleton -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp">
+
+        <View
+            android:layout_width="80dp"
+            android:layout_height="60dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/skeleton_background" />
+
+        <View
+            android:layout_width="80dp"
+            android:layout_height="60dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/skeleton_background" />
+
+        <View
+            android:layout_width="80dp"
+            android:layout_height="60dp"
+            android:background="@drawable/skeleton_background" />
+
+    </LinearLayout>
+
+</LinearLayout>
+

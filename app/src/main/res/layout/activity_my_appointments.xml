@@ -49,6 +49,22 @@
         android:layout_height="1dp"
         android:background="@color/light_gray" />
 
+    <!-- Skeleton Loader -->
+    <LinearLayout
+        android:id="@+id/skeletonAppointmentsLayout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="visible">
+
+        <include layout="@layout/skeleton_appointment_card" />
+        <include layout="@layout/skeleton_appointment_card" />
+        <include layout="@layout/skeleton_appointment_card" />
+        <include layout="@layout/skeleton_appointment_card" />
+
+    </LinearLayout>
+
     <!-- Appointments List -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvAppointments"
@@ -58,6 +74,7 @@
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
         android:clipToPadding="false"
+        android:visibility="gone"
         tools:listitem="@layout/item_appointment_card" />
 
     <!-- Empty State (Initially Hidden) -->

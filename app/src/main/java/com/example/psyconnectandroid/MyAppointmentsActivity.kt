@@ -17,6 +17,7 @@ class MyAppointmentsActivity : AppCompatActivity() {
     private lateinit var btnBack: ImageView
     private lateinit var rvAppointments: RecyclerView
     private lateinit var emptyStateLayout: LinearLayout
+    private lateinit var skeletonAppointmentsLayout: LinearLayout
     private lateinit var appointmentAdapter: AppointmentAdapter
 
     private val firestore = FirebaseFirestore.getInstance()
@@ -37,6 +38,15 @@ class MyAppointmentsActivity : AppCompatActivity() {
         btnBack = findViewById(R.id.btnBack)
         rvAppointments = findViewById(R.id.rvAppointments)
         emptyStateLayout = findViewById(R.id.emptyStateLayout)
+        skeletonAppointmentsLayout = findViewById(R.id.skeletonAppointmentsLayout)
+        
+        // Start skeleton animation
+        startSkeletonAnimation()
+    }
+    
+    private fun startSkeletonAnimation() {
+        val animation = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.skeleton_shimmer)
+        skeletonAppointmentsLayout.startAnimation(animation)
     }
 
     private fun setupBackButton() {
@@ -114,11 +124,13 @@ class MyAppointmentsActivity : AppCompatActivity() {
     }
     
     private fun showEmptyState() {
+        skeletonAppointmentsLayout.visibility = View.GONE
         rvAppointments.visibility = View.GONE
         emptyStateLayout.visibility = View.VISIBLE
     }
     
     private fun showAppointmentsList() {
+        skeletonAppointmentsLayout.visibility = View.GONE
         rvAppointments.visibility = View.VISIBLE
         emptyStateLayout.visibility = View.GONE
     }

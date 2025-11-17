@@ -63,13 +63,18 @@ class DoctorsGridAdapter(
                 ivFeaturedStar.visibility = View.GONE
             }
 
-            // Load doctor photo from Firestore
+            // Load doctor photo with caching
             if (doctor.photoUrl.isNotEmpty()) {
+                // Salvar no cache de fotos
+                PhotoCache.put(doctor.id, doctor.photoUrl)
+                
+                // Carregar com Glide (que já tem cache automático configurado)
                 Glide.with(itemView.context)
                     .load(doctor.photoUrl)
                     .placeholder(R.drawable.ic_person)
                     .error(R.drawable.ic_person)
                     .circleCrop()
+                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                     .into(ivPhoto)
             } else {
                 Glide.with(itemView.context)
@@ -77,6 +82,9 @@ class DoctorsGridAdapter(
                     .circleCrop()
                     .into(ivPhoto)
             }
+            
+            // Salvar doctor no cache
+            DoctorCache.put(doctor.id, doctor)
 
             btnConnect.setOnClickListener {
                 onConnectClick(doctor)

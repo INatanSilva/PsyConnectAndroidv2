@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Photo Skeleton -->
+            <View
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:background="@drawable/skeleton_background" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp">
+
+                <!-- Name Skeleton -->
+                <View
+                    android:layout_width="140dp"
+                    android:layout_height="16dp"
+                    android:background="@drawable/skeleton_background" />
+
+                <!-- Specialization Skeleton -->
+                <View
+                    android:layout_width="100dp"
+                    android:layout_height="14dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/skeleton_background" />
+
+            </LinearLayout>
+
+            <!-- Status Badge Skeleton -->
+            <View
+                android:layout_width="70dp"
+                android:layout_height="24dp"
+                android:background="@drawable/skeleton_background" />
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/light_gray"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Date/Time Skeleton -->
+        <View
+            android:layout_width="180dp"
+            android:layout_height="14dp"
+            android:background="@drawable/skeleton_background" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
+

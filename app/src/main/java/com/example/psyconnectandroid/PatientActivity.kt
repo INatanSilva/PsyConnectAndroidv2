@@ -130,7 +130,8 @@ class PatientActivity : AppCompatActivity() {
         }
         
         navProfile.setOnClickListener {
-            logout()
+            val intent = Intent(this, ProfileActivity::class.java)
+            startActivity(intent)
         }
     }
     

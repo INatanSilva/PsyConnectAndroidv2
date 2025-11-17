@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".PsyConnectApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -65,6 +66,12 @@
             android:exported="false"
             android:label="Minhas Consultas"
             android:parentActivityName=".PatientActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:label="Meu Perfil"
             android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
 
         <!-- Doctor Activities -->

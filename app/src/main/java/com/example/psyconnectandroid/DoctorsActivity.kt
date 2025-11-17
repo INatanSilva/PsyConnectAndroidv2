@@ -17,6 +17,7 @@ class DoctorsActivity : AppCompatActivity() {
     
     private lateinit var searchEditText: EditText
     private lateinit var recyclerViewDoctors: RecyclerView
+    private lateinit var skeletonDoctorsGrid: LinearLayout
     private lateinit var chipAll: TextView
     private lateinit var chipPsicologia: TextView
     private lateinit var chipPsiquiatria: TextView
@@ -47,6 +48,7 @@ class DoctorsActivity : AppCompatActivity() {
     private fun initializeViews() {
         searchEditText = findViewById(R.id.searchEditText)
         recyclerViewDoctors = findViewById(R.id.recyclerViewDoctors)
+        skeletonDoctorsGrid = findViewById(R.id.skeletonDoctorsGrid)
         chipAll = findViewById(R.id.chipAll)
         chipPsicologia = findViewById(R.id.chipPsicologia)
         chipPsiquiatria = findViewById(R.id.chipPsiquiatria)
@@ -58,6 +60,24 @@ class DoctorsActivity : AppCompatActivity() {
         navDoctors = findViewById(R.id.navDoctors)
         navNotes = findViewById(R.id.navNotes)
         navProfile = findViewById(R.id.navProfile)
+        
+        // Start skeleton animation
+        startSkeletonAnimation()
+    }
+    
+    private fun startSkeletonAnimation() {
+        val animation = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.skeleton_shimmer)
+        skeletonDoctorsGrid.startAnimation(animation)
+    }
+    
+    private fun showSkeleton() {
+        skeletonDoctorsGrid.visibility = View.VISIBLE
+        recyclerViewDoctors.visibility = View.GONE
+    }
+    
+    private fun hideSkeleton() {
+        skeletonDoctorsGrid.visibility = View.GONE
+        recyclerViewDoctors.visibility = View.VISIBLE
     }
     
     private fun setupClickListeners() {
@@ -107,7 +127,8 @@ class DoctorsActivity : AppCompatActivity() {
         }
         
         navProfile.setOnClickListener {
-            logout()
+            val intent = Intent(this, ProfileActivity::class.java)
+            startActivity(intent)
         }
     }
     
@@ -117,6 +138,16 @@ class DoctorsActivity : AppCompatActivity() {
     }
     
     private fun loadDoctors() {
+        // Tentar carregar do cache primeiro
+        val cachedDoctors = DoctorCache.getAll()
+        if (cachedDoctors.isNotEmpty()) {
+            android.util.Log.d("DoctorsActivity", "📦 Carregando ${cachedDoctors.size} doutores do cache")
+            allDoctors.clear()
+            allDoctors.addAll(cachedDoctors)
+            filterDoctors(currentFilter)
+        }
+        
+        // Buscar do Firestore em background para atualizar cache
         firestore.collection("doutores")
             .get()
             .addOnSuccessListener { documents ->
@@ -125,16 +156,22 @@ class DoctorsActivity : AppCompatActivity() {
                     try {
                         val doctor = Doctor.fromMap(document.data, document.id)
                         allDoctors.add(doctor)
+                        // Salvar no cache
+                        DoctorCache.put(doctor.id, doctor)
                     } catch (e: Exception) {
                         android.util.Log.e("DoctorsActivity", "Error parsing doctor ${document.id}", e)
                     }
                 }
                 
+                android.util.Log.d("DoctorsActivity", "🔄 ${allDoctors.size} doutores carregados do Firestore e salvos no cache")
                 filterDoctors(currentFilter)
             }
             .addOnFailureListener { e ->
                 android.util.Log.e("DoctorsActivity", "Error loading doctors", e)
-                Toast.makeText(this, "Erro ao carregar doutores", Toast.LENGTH_SHORT).show()
+                // Se falhar e não tiver cache, mostrar erro
+                if (allDoctors.isEmpty()) {
+                    Toast.makeText(this, "Erro ao carregar doutores", Toast.LENGTH_SHORT).show()
+                }
             }
     }
     
@@ -189,6 +226,7 @@ class DoctorsActivity : AppCompatActivity() {
         recyclerViewDoctors.adapter = DoctorsGridAdapter(filteredDoctors) { doctor ->
             connectDoctor(doctor)
         }
+        hideSkeleton()
     }
     
     private fun selectFilter(filter: String) {
@@ -216,15 +254,6 @@ class DoctorsActivity : AppCompatActivity() {
         // TODO: Navigate to scheduling screen
     }
     
-    private fun logout() {
-        auth.signOut()
-        Toast.makeText(this, "Logout realizado", Toast.LENGTH_SHORT).show()
-        
-        val intent = Intent(this, LoginActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
-        finish()
-    }
 }
 
 

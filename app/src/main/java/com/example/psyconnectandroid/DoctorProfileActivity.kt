@@ -27,6 +27,8 @@ class DoctorProfileActivity : AppCompatActivity() {
     private lateinit var rvAvailability: RecyclerView
     private lateinit var rvReviews: RecyclerView
     private lateinit var btnBookAppointment: Button
+    private lateinit var skeletonDoctorProfile: android.widget.ScrollView
+    private lateinit var doctorProfileContent: android.widget.ScrollView
 
     private val firestore = FirebaseFirestore.getInstance()
     private var doctorId: String? = null
@@ -67,6 +69,26 @@ class DoctorProfileActivity : AppCompatActivity() {
         rvAvailability = findViewById(R.id.rvAvailability)
         rvReviews = findViewById(R.id.rvReviews)
         btnBookAppointment = findViewById(R.id.btnBookAppointment)
+        skeletonDoctorProfile = findViewById(R.id.skeletonDoctorProfile)
+        doctorProfileContent = findViewById(R.id.doctorProfileContent)
+        
+        // Start skeleton animation
+        startSkeletonAnimation()
+    }
+    
+    private fun startSkeletonAnimation() {
+        val animation = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.skeleton_shimmer)
+        skeletonDoctorProfile.findViewById<View>(R.id.skeletonDoctorProfile)?.startAnimation(animation)
+    }
+    
+    private fun showSkeleton() {
+        skeletonDoctorProfile.visibility = View.VISIBLE
+        doctorProfileContent.visibility = View.GONE
+    }
+    
+    private fun hideSkeleton() {
+        skeletonDoctorProfile.visibility = View.GONE
+        doctorProfileContent.visibility = View.VISIBLE
     }
     
     private fun setupRecyclerViews() {
@@ -102,18 +124,35 @@ class DoctorProfileActivity : AppCompatActivity() {
 
     private fun loadDoctorProfile() {
         doctorId?.let { id ->
+            // Tentar carregar do cache primeiro
+            val cachedDoctor = DoctorCache.get(id)
+            if (cachedDoctor != null) {
+                android.util.Log.d("DoctorProfile", "📦 Carregando perfil do doutor do cache")
+                populateDoctorInfo(cachedDoctor)
+            }
+            
+            // Buscar do Firestore em background para atualizar
             firestore.collection("doutores").document(id)
                 .get()
                 .addOnSuccessListener { document ->
                     if (document != null && document.exists()) {
                         val doctor = Doctor.fromMap(document.data!!, document.id)
+                        // Salvar no cache
+                        DoctorCache.put(doctor.id, doctor)
+                        if (doctor.photoUrl.isNotEmpty()) {
+                            PhotoCache.put(doctor.id, doctor.photoUrl)
+                        }
                         populateDoctorInfo(doctor)
                     } else {
-                        Toast.makeText(this, "Doutor não encontrado.", Toast.LENGTH_SHORT).show()
+                        if (cachedDoctor == null) {
+                            Toast.makeText(this, "Doutor não encontrado.", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
                 .addOnFailureListener { e ->
-                    Toast.makeText(this, "Erro ao carregar perfil: ${e.message}", Toast.LENGTH_SHORT).show()
+                    if (cachedDoctor == null) {
+                        Toast.makeText(this, "Erro ao carregar perfil: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
         }
     }
@@ -126,8 +165,13 @@ class DoctorProfileActivity : AppCompatActivity() {
         if (doctor.photoUrl.isNotEmpty()) {
             Glide.with(this)
                 .load(doctor.photoUrl)
+                .placeholder(R.drawable.ic_person)
+                .error(R.drawable.ic_person)
+                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                 .into(ivDoctorProfilePhoto)
         }
+        
+        hideSkeleton()
     }
     
     private fun loadAvailability() {

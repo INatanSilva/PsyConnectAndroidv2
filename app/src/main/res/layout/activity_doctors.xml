@@ -135,12 +135,57 @@
 
             </HorizontalScrollView>
 
+            <!-- Skeleton Loader -->
+            <LinearLayout
+                android:id="@+id/skeletonDoctorsGrid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <include layout="@layout/skeleton_doctor_card"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <include layout="@layout/skeleton_doctor_card"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <include layout="@layout/skeleton_doctor_card"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <include layout="@layout/skeleton_doctor_card"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
             <!-- Doctors Grid -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerViewDoctors"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:clipToPadding="false"
+                android:visibility="gone"
                 tools:listitem="@layout/item_doctor_grid" />
 
         </LinearLayout>

@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.services)
+    id("kotlin-kapt")
 }
 
 android {
@@ -58,6 +59,10 @@ dependencies {
     
     // Glide for image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    kapt("com.github.bumptech.glide:compiler:4.16.0")
+    
+    // Gson for JSON serialization
+    implementation("com.google.code.gson:gson:2.10.1")
     
     // Stripe Android SDK
     implementation("com.stripe:stripe-android:20.49.0")
