@@ -28,11 +28,14 @@ class DoctorProfileActivity : AppCompatActivity() {
     private lateinit var rvAvailability: RecyclerView
     private lateinit var rvReviews: RecyclerView
     private lateinit var btnBookAppointment: Button
+    private lateinit var btnChat: Button
     private lateinit var skeletonDoctorProfile: android.widget.ScrollView
     private lateinit var doctorProfileContent: android.widget.ScrollView
 
     private val firestore = FirebaseFirestore.getInstance()
     private var doctorId: String? = null
+    private var doctorName: String? = null
+    private var doctorPhotoUrl: String? = null
 
     private lateinit var availabilityAdapter: AvailabilityAdapter
     private lateinit var reviewsAdapter: ReviewsAdapter
@@ -70,6 +73,7 @@ class DoctorProfileActivity : AppCompatActivity() {
         rvAvailability = findViewById(R.id.rvAvailability)
         rvReviews = findViewById(R.id.rvReviews)
         btnBookAppointment = findViewById(R.id.btnBookAppointment)
+        btnChat = findViewById(R.id.btnChat)
         skeletonDoctorProfile = findViewById(R.id.skeletonDoctorProfile)
         doctorProfileContent = findViewById(R.id.doctorProfileContent)
         
@@ -121,6 +125,32 @@ class DoctorProfileActivity : AppCompatActivity() {
                 Toast.makeText(this, "Selecione um horário disponível acima.", Toast.LENGTH_SHORT).show()
             }
         }
+        btnChat.setOnClickListener {
+            startChat()
+        }
+    }
+    
+    private fun startChat() {
+        val doctorId = this.doctorId
+        val doctorName = this.doctorName
+        val doctorPhotoUrl = this.doctorPhotoUrl
+        
+        if (doctorId == null) {
+            Toast.makeText(this, "Erro: ID do doutor não encontrado.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        ChatHelper.startChatWithDoctor(
+            doctorId = doctorId,
+            doctorName = doctorName ?: "Doutor",
+            doctorPhotoUrl = doctorPhotoUrl ?: "",
+            activity = this
+        ) { chatRoomId ->
+            // Abrir ChatActivity
+            val intent = Intent(this, ChatActivity::class.java)
+            intent.putExtra("CHAT_ROOM_ID", chatRoomId)
+            startActivity(intent)
+        }
     }
 
     private fun loadDoctorProfile() {
@@ -159,6 +189,9 @@ class DoctorProfileActivity : AppCompatActivity() {
     }
 
     private fun populateDoctorInfo(doctor: Doctor) {
+        doctorName = doctor.name
+        doctorPhotoUrl = doctor.photoUrl
+        
         tvDoctorProfileName.text = doctor.name
         tvDoctorProfileSpecialization.text = doctor.specialization
         tvDoctorProfileAbout.text = "Descrição do doutor virá do Firestore." // Placeholder

@@ -126,7 +126,8 @@ class PatientActivity : AppCompatActivity() {
         }
         
         navNotes.setOnClickListener {
-            Toast.makeText(this, "Em breve: Tela de anotações", Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, ChatListActivity::class.java)
+            startActivity(intent)
         }
         
         navProfile.setOnClickListener {

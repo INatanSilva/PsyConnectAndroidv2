@@ -100,6 +100,21 @@
             android:label="Detalhes da Consulta"
             android:parentActivityName=".DoctorScheduleActivity"
             android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <!-- Chat Activities -->
+        <activity
+            android:name=".ChatListActivity"
+            android:exported="false"
+            android:label="Mensagens"
+            android:parentActivityName=".PatientActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".ChatActivity"
+            android:exported="false"
+            android:label="Chat"
+            android:parentActivityName=".ChatListActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
 
     </application>
 
