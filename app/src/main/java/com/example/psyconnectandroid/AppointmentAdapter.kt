@@ -1,6 +1,7 @@
 package com.example.psyconnectandroid
 
 import android.content.Context
+import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -42,26 +43,39 @@ class AppointmentAdapter(
     inner class AppointmentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val ivPhoto: ImageView = itemView.findViewById(R.id.ivAppointmentDoctorPhoto)
         private val tvName: TextView = itemView.findViewById(R.id.tvAppointmentDoctorName)
-        private val tvSpecialization: TextView = itemView.findViewById(R.id.tvAppointmentSpecialization)
-        private val tvDateTime: TextView = itemView.findViewById(R.id.tvAppointmentDateTime)
+        private val tvDate: TextView = itemView.findViewById(R.id.tvAppointmentDate)
+        private val tvTime: TextView = itemView.findViewById(R.id.tvAppointmentTime)
         private val tvStatus: TextView = itemView.findViewById(R.id.tvAppointmentStatus)
+        private val btnEnterVideo: android.widget.Button = itemView.findViewById(R.id.btnEnterVideo)
+        private val btnChat: ImageView = itemView.findViewById(R.id.btnChat)
+        private val btnNotes: ImageView = itemView.findViewById(R.id.btnNotes)
 
         fun bind(appointment: Appointment) {
             // Display patient name for doctors, and doctor name for patients
             tvName.text = if (userType == UserType.PSYCHOLOGIST) appointment.patientName else appointment.doctorName
 
-            // Load and display specialization for patient view
-            if (userType == UserType.PATIENT && appointment.doctorId.isNotEmpty()) {
-                loadDoctorSpecialization(appointment.doctorId, tvSpecialization)
-            } else {
-                tvSpecialization.visibility = View.GONE
+            // Format date and time separately
+            appointment.startTime?.toDate()?.let { startDate ->
+                // Date format: "4 November 2025" (formato iOS)
+                val dateFormat = SimpleDateFormat("d MMMM yyyy", Locale("en", "US"))
+                tvDate.text = dateFormat.format(startDate)
+                
+                // Time format: "19:54 - 20:54"
+                val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                val startTimeStr = timeFormat.format(startDate)
+                
+                appointment.endTime?.toDate()?.let { endDate ->
+                    val endTimeStr = timeFormat.format(endDate)
+                    tvTime.text = "$startTimeStr - $endTimeStr"
+                } ?: run {
+                    tvTime.text = startTimeStr
+                }
+            } ?: run {
+                tvDate.text = ""
+                tvTime.text = ""
             }
 
-            appointment.startTime?.toDate()?.let {
-                val format = SimpleDateFormat("d 'de' MMMM, HH:mm", Locale("pt", "BR"))
-                tvDateTime.text = format.format(it)
-            }
-
+            // Status badge
             tvStatus.text = when (appointment.status.lowercase()) {
                 "agendada", "scheduled", "confirmed" -> "Agendada"
                 "completed", "completada", "concluída" -> "Concluída"
@@ -74,16 +88,42 @@ class AppointmentAdapter(
             if (userType == UserType.PATIENT && appointment.doctorId.isNotEmpty()) {
                 loadDoctorPhoto(appointment.doctorId, ivPhoto)
             } else if (userType == UserType.PSYCHOLOGIST && appointment.patientId.isNotEmpty()) {
-                // Para doutores, podemos buscar foto do paciente também (se necessário)
                 loadPatientPhoto(appointment.patientId, ivPhoto)
             } else {
-                // Placeholder se não tiver ID
                 Glide.with(itemView.context)
                     .load(R.drawable.ic_person)
                     .circleCrop()
                     .into(ivPhoto)
             }
 
+            // Botão Entrar (Video Call) - apenas para consultas agendadas/confirmadas
+            val isScheduled = appointment.status.lowercase() in listOf("agendada", "scheduled", "confirmed")
+            if (isScheduled) {
+                btnEnterVideo.visibility = View.VISIBLE
+                btnEnterVideo.setOnClickListener {
+                    // TODO: Implementar chamada de vídeo
+                    android.widget.Toast.makeText(itemView.context, "Funcionalidade de vídeo em desenvolvimento", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                btnEnterVideo.visibility = View.GONE
+            }
+
+            // Botão Chat - apenas para pacientes
+            if (userType == UserType.PATIENT && appointment.doctorId.isNotEmpty()) {
+                btnChat.visibility = View.VISIBLE
+                btnChat.setOnClickListener {
+                    openChatWithDoctor(appointment)
+                }
+            } else {
+                btnChat.visibility = View.GONE
+            }
+
+            // Botão Anotações
+            btnNotes.setOnClickListener {
+                // TODO: Implementar tela de anotações
+                android.widget.Toast.makeText(itemView.context, "Anotações em desenvolvimento", android.widget.Toast.LENGTH_SHORT).show()
+            }
+            
             itemView.setOnClickListener {
                 onAppointmentClick(appointment)
             }
@@ -245,13 +285,93 @@ class AppointmentAdapter(
 
         private fun getStatusDrawable(context: Context, status: String): android.graphics.drawable.Drawable? {
             val drawableId = when (status.lowercase()) {
-                "agendada", "scheduled" -> R.drawable.bg_status_confirmed // Usa confirmed para agendada
+                "agendada", "scheduled" -> R.drawable.bg_status_scheduled
                 "confirmed", "confirmada" -> R.drawable.bg_status_confirmed
                 "completed", "completada", "concluída" -> R.drawable.bg_status_completed
                 "cancelled", "cancelada" -> R.drawable.bg_status_cancelled
                 else -> R.drawable.bg_status_pending
             }
             return ContextCompat.getDrawable(context, drawableId)
+        }
+        
+        private fun openChatWithDoctor(appointment: Appointment) {
+            val context = itemView.context
+            val doctorId = appointment.doctorId
+            val doctorName = appointment.doctorName
+            
+            // Buscar foto do doutor
+            val cachedUrl = PhotoCache.get(doctorId) ?: doctorPhotoCache[doctorId]
+            val doctorPhotoUrl = cachedUrl ?: ""
+            
+            // Buscar dados do paciente atual
+            val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+            if (currentUserId == null) {
+                android.widget.Toast.makeText(context, "Erro: usuário não autenticado", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            
+            // Buscar nome e foto do paciente
+            firestore.collection("pacientes").document(currentUserId).get()
+                .addOnSuccessListener { patientDoc ->
+                    val patientName = patientDoc.getString("name") 
+                        ?: patientDoc.getString("fullName") 
+                        ?: "Paciente"
+                    val patientPhotoUrl = patientDoc.getString("profileImageURL") 
+                        ?: patientDoc.getString("photoUrl") 
+                        ?: ""
+                    
+                    // Criar ou obter chatRoom
+                    ChatHelper.createOrGetChatRoom(
+                        patientId = currentUserId,
+                        doctorId = doctorId,
+                        patientName = patientName,
+                        doctorName = doctorName,
+                        patientPhotoUrl = patientPhotoUrl,
+                        doctorPhotoUrl = doctorPhotoUrl,
+                        onSuccess = { chatRoomId ->
+                            // Abrir ChatActivity
+                            val intent = Intent(context, ChatActivity::class.java)
+                            intent.putExtra("CHAT_ROOM_ID", chatRoomId)
+                            intent.putExtra("PATIENT_ID", currentUserId)
+                            intent.putExtra("DOCTOR_ID", doctorId)
+                            intent.putExtra("PATIENT_NAME", patientName)
+                            intent.putExtra("DOCTOR_NAME", doctorName)
+                            intent.putExtra("PATIENT_PHOTO_URL", patientPhotoUrl)
+                            intent.putExtra("DOCTOR_PHOTO_URL", doctorPhotoUrl)
+                            context.startActivity(intent)
+                        },
+                        onFailure = { e ->
+                            android.util.Log.e("AppointmentAdapter", "Error creating chat room", e)
+                            android.widget.Toast.makeText(context, "Erro ao abrir conversa", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+                .addOnFailureListener { e ->
+                    // Se não conseguir buscar dados do paciente, usar valores padrão
+                    ChatHelper.createOrGetChatRoom(
+                        patientId = currentUserId,
+                        doctorId = doctorId,
+                        patientName = "Paciente",
+                        doctorName = doctorName,
+                        patientPhotoUrl = "",
+                        doctorPhotoUrl = doctorPhotoUrl,
+                        onSuccess = { chatRoomId ->
+                            val intent = Intent(context, ChatActivity::class.java)
+                            intent.putExtra("CHAT_ROOM_ID", chatRoomId)
+                            intent.putExtra("PATIENT_ID", currentUserId)
+                            intent.putExtra("DOCTOR_ID", doctorId)
+                            intent.putExtra("PATIENT_NAME", "Paciente")
+                            intent.putExtra("DOCTOR_NAME", doctorName)
+                            intent.putExtra("PATIENT_PHOTO_URL", "")
+                            intent.putExtra("DOCTOR_PHOTO_URL", doctorPhotoUrl)
+                            context.startActivity(intent)
+                        },
+                        onFailure = { ex ->
+                            android.util.Log.e("AppointmentAdapter", "Error creating chat room", ex)
+                            android.widget.Toast.makeText(context, "Erro ao abrir conversa", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
         }
     }
 }

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -17,12 +18,14 @@ class MyAppointmentsActivity : AppCompatActivity() {
     private lateinit var btnBack: ImageView
     private lateinit var rvAppointments: RecyclerView
     private lateinit var emptyStateLayout: LinearLayout
-    private lateinit var skeletonAppointmentsLayout: android.widget.ScrollView
+    private lateinit var cardPendingRequests: androidx.cardview.widget.CardView
+    private lateinit var tvAppointmentsCount: TextView
     private lateinit var appointmentAdapter: AppointmentAdapter
 
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val appointments = mutableListOf<Appointment>()
+    private val pendingAppointments = mutableListOf<Appointment>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,19 +41,8 @@ class MyAppointmentsActivity : AppCompatActivity() {
         btnBack = findViewById(R.id.btnBack)
         rvAppointments = findViewById(R.id.rvAppointments)
         emptyStateLayout = findViewById(R.id.emptyStateLayout)
-        skeletonAppointmentsLayout = findViewById(R.id.skeletonAppointmentsLayout)
-        
-        // Start skeleton animation
-        startSkeletonAnimation()
-    }
-    
-    private fun startSkeletonAnimation() {
-        val animation = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.skeleton_shimmer)
-        skeletonAppointmentsLayout.startAnimation(animation)
-    }
-    
-    private fun stopSkeletonAnimation() {
-        skeletonAppointmentsLayout.clearAnimation()
+        cardPendingRequests = findViewById(R.id.cardPendingRequests)
+        tvAppointmentsCount = findViewById(R.id.tvAppointmentsCount)
     }
 
     private fun setupBackButton() {
@@ -88,56 +80,74 @@ class MyAppointmentsActivity : AppCompatActivity() {
                 
                 if (querySnapshot.isEmpty) {
                     android.util.Log.d("MyAppointmentsActivity", "⚠️ No appointments found")
-                    showEmptyState()
+                    pendingAppointments.clear()
+                    appointments.clear()
+                    updateUI()
                     return@addOnSuccessListener
                 }
                 
-                // Processar cada documento
+                // Separar pendentes e agendadas
+                pendingAppointments.clear()
+                appointments.clear()
+                
                 for (document in querySnapshot.documents) {
                     try {
                         val data = document.data
                         if (data != null) {
                             val appointment = Appointment.fromMap(data, document.id)
-                            appointments.add(appointment)
-                            android.util.Log.d("MyAppointmentsActivity", "✅ Added appointment: ${appointment.doctorName} - ${appointment.startTime}")
+                            val status = appointment.status.lowercase()
+                            
+                            // Pendentes: status "pending" ou sem status definido
+                            if (status == "pending" || status == "pendente" || status.isEmpty()) {
+                                pendingAppointments.add(appointment)
+                            } else {
+                                // Agendadas: status "agendada", "scheduled", "confirmed"
+                                if (status in listOf("agendada", "scheduled", "confirmed", "confirmada")) {
+                                    appointments.add(appointment)
+                                }
+                            }
                         }
                     } catch (e: Exception) {
                         android.util.Log.e("MyAppointmentsActivity", "❌ Error parsing appointment ${document.id}", e)
                     }
                 }
                 
-                // Ordenar manualmente por data/hora (mais recentes primeiro)
+                // Ordenar agendadas por data/hora (mais próximas primeiro)
                 appointments.sortWith(compareBy(nullsLast()) { it.startTime })
-                appointments.reverse() // Para ter as mais recentes primeiro (DESCENDING)
                 
-                android.util.Log.d("MyAppointmentsActivity", "✅ Final appointments count: ${appointments.size}")
+                android.util.Log.d("MyAppointmentsActivity", "✅ Pending: ${pendingAppointments.size}, Scheduled: ${appointments.size}")
                 
-                appointmentAdapter.notifyDataSetChanged()
-                
-                if (appointments.isEmpty()) {
-                    showEmptyState()
-                } else {
-                    showAppointmentsList()
-                }
+                updateUI()
             }
             .addOnFailureListener { e ->
                 android.util.Log.e("MyAppointmentsActivity", "❌ Error loading appointments", e)
                 Toast.makeText(this, "Erro ao carregar consultas: ${e.message}", Toast.LENGTH_LONG).show()
-                showEmptyState()
+                pendingAppointments.clear()
+                appointments.clear()
+                updateUI()
             }
     }
     
-    private fun showEmptyState() {
-        stopSkeletonAnimation()
-        skeletonAppointmentsLayout.visibility = View.GONE
-        rvAppointments.visibility = View.GONE
-        emptyStateLayout.visibility = View.VISIBLE
-    }
-    
-    private fun showAppointmentsList() {
-        stopSkeletonAnimation()
-        skeletonAppointmentsLayout.visibility = View.GONE
-        rvAppointments.visibility = View.VISIBLE
-        emptyStateLayout.visibility = View.GONE
+    private fun updateUI() {
+        // Atualizar seção de pendentes
+        if (pendingAppointments.isEmpty()) {
+            cardPendingRequests.visibility = View.VISIBLE
+        } else {
+            // TODO: Mostrar lista de pendentes se houver
+            cardPendingRequests.visibility = View.VISIBLE
+        }
+        
+        // Atualizar contagem e lista de agendadas
+        if (appointments.isNotEmpty()) {
+            tvAppointmentsCount.text = appointments.size.toString()
+            tvAppointmentsCount.visibility = View.VISIBLE
+            rvAppointments.visibility = View.VISIBLE
+            emptyStateLayout.visibility = View.GONE
+            appointmentAdapter.notifyDataSetChanged()
+        } else {
+            tvAppointmentsCount.visibility = View.GONE
+            rvAppointments.visibility = View.GONE
+            emptyStateLayout.visibility = View.VISIBLE
+        }
     }
 }
