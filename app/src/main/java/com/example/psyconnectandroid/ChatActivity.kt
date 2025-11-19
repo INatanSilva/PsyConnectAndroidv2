@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -273,6 +274,13 @@ class ChatActivity : AppCompatActivity() {
     private fun sendMessage() {
         val text = etMessage.text.toString().trim()
         if (text.isEmpty()) return
+        
+        // Validar mensagem (bloquear telefones e links)
+        val validation = ChatValidator.validateMessage(text)
+        if (!validation.first) {
+            Toast.makeText(this, validation.second, Toast.LENGTH_LONG).show()
+            return
+        }
         
         val chatRoomId = this.chatRoomId
         val currentUserId = this.currentUserId
