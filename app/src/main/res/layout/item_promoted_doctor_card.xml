@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="@dimen/promoted_card_width"
+    android:layout_height="@dimen/promoted_card_height"
+    android:layout_marginStart="0dp"
+    android:layout_marginEnd="@dimen/promoted_card_margin_end"
+    android:layout_marginTop="0dp"
+    android:layout_marginBottom="0dp"
+    app:cardCornerRadius="@dimen/card_corner_radius"
+    app:cardElevation="@dimen/card_elevation"
+    app:cardBackgroundColor="@color/white">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/light_gray">
+
+        <!-- Doctor Photo (Full Frame) -->
+        <ImageView
+            android:id="@+id/ivDoctorPhoto"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:contentDescription="Foto do doutor promovido" />
+
+        <!-- Gradient Overlay (de transparente para preto) -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_gradient_overlay" />
+
+        <!-- Badge de Promoção (Estrela no topo esquerdo) -->
+        <ImageView
+            android:id="@+id/ivPromotionBadge"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentStart="true"
+            android:layout_margin="12dp"
+            android:src="@drawable/ic_star"
+            android:tint="#FFD700"
+            android:background="@drawable/bg_circle"
+            android:padding="6dp"
+            android:contentDescription="Badge de promoção" />
+
+        <!-- Informações do Doutor (na parte inferior) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Nome e Status Online -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:id="@+id/tvDoctorName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/white"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:shadowColor="@color/black"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="3" />
+
+                <View
+                    android:id="@+id/viewOnlineStatus"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_online_status"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <!-- Especialidade -->
+            <TextView
+                android:id="@+id/tvDoctorSpecialization"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Psicólogo"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:layout_marginBottom="4dp"
+                android:shadowColor="@color/black"
+                android:shadowDx="1"
+                android:shadowDy="1"
+                android:shadowRadius="3" />
+
+            <!-- Preço -->
+            <TextView
+                android:id="@+id/tvDoctorPrice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp"
+                android:shadowColor="@color/black"
+                android:shadowDx="1"
+                android:shadowDy="1"
+                android:shadowRadius="3" />
+
+            <!-- Botão Conectar -->
+            <Button
+                android:id="@+id/btnSchedule"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_button_pressed"
+                android:text="Conectar"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:padding="10dp"
+                android:letterSpacing="0.05" />
+
+        </LinearLayout>
+
+    </RelativeLayout>
+
+</androidx.cardview.widget.CardView>
+

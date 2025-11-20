@@ -27,7 +27,6 @@ class DoctorProfileActivity : AppCompatActivity() {
     private lateinit var tvDoctorProfileAbout: TextView
     private lateinit var rvAvailability: RecyclerView
     private lateinit var rvReviews: RecyclerView
-    private lateinit var btnBookAppointment: Button
     private lateinit var skeletonDoctorProfile: android.widget.ScrollView
     private lateinit var doctorProfileContent: android.widget.ScrollView
 
@@ -71,7 +70,6 @@ class DoctorProfileActivity : AppCompatActivity() {
         tvDoctorProfileAbout = findViewById(R.id.tvDoctorProfileAbout)
         rvAvailability = findViewById(R.id.rvAvailability)
         rvReviews = findViewById(R.id.rvReviews)
-        btnBookAppointment = findViewById(R.id.btnBookAppointment)
         skeletonDoctorProfile = findViewById(R.id.skeletonDoctorProfile)
         doctorProfileContent = findViewById(R.id.doctorProfileContent)
         
@@ -114,14 +112,6 @@ class DoctorProfileActivity : AppCompatActivity() {
     private fun setupListeners() {
         btnProfileBack.setOnClickListener {
             finish()
-        }
-        btnBookAppointment.setOnClickListener {
-            // Show available slots or message if none available
-            if (availabilitySlots.isEmpty()) {
-                Toast.makeText(this, "Nenhum horário disponível no momento.", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Selecione um horário disponível acima.", Toast.LENGTH_SHORT).show()
-            }
         }
     }
 

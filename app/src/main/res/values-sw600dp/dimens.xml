@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Card Dimensions - Responsive for Tablets (sw600dp) -->
+    <!-- Promoted Doctor Card: Slightly larger for tablets -->
+    <dimen name="promoted_card_width">240dp</dimen>
+    <dimen name="promoted_card_height">336dp</dimen>
+    <dimen name="promoted_card_margin_end">16dp</dimen>
+    
+    <!-- Regular Doctor Card: Larger for tablets -->
+    <dimen name="doctor_card_width">220dp</dimen>
+    <dimen name="doctor_card_margin_end">16dp</dimen>
+    <dimen name="doctor_card_image_height">240dp</dimen>
+    
+    <!-- Card Corner Radius -->
+    <dimen name="card_corner_radius">24dp</dimen>
+    
+    <!-- Card Elevation -->
+    <dimen name="card_elevation">6dp</dimen>
+</resources>
+

@@ -15,6 +15,9 @@ import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.comparisons.nullsLast
@@ -23,16 +26,8 @@ class PatientActivity : AppCompatActivity() {
     
     private lateinit var recyclerViewDoctors: RecyclerView
     private lateinit var recyclerViewAppointments: RecyclerView
-    private lateinit var cardFeaturedDoctor: View
-    private lateinit var tvFeaturedDoctorName: TextView
-    private lateinit var tvFeaturedDoctorSpecialization: TextView
-    private lateinit var tvFeaturedDoctorPrice: TextView
-    private lateinit var tvFeaturedDoctorRating: TextView
-    private lateinit var tvFeaturedDoctorReviews: TextView
-    private lateinit var layoutFeaturedRating: View
-    private lateinit var ivFeaturedDoctorPhoto: ImageView
-    private lateinit var viewOnlineStatus: View
-    private lateinit var btnFeaturedSchedule: Button
+    private lateinit var recyclerViewPromotedDoctors: RecyclerView
+    private lateinit var layoutPromotedDoctors: LinearLayout
     private lateinit var btnFindHelp: Button
     private lateinit var tvAppointmentCount: TextView
     private lateinit var viewAppointmentBadge: LinearLayout
@@ -46,10 +41,11 @@ class PatientActivity : AppCompatActivity() {
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
     
+    private val patientService = PatientService()
     private val doctors = mutableListOf<Doctor>()
-    private val promotedDoctors = mutableListOf<Doctor>()
     private val appointments = mutableListOf<Appointment>()
     private var patientId: String? = null
+    private var isLoadingPromotedDoctors = false
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +62,7 @@ class PatientActivity : AppCompatActivity() {
         // Reload data every time the screen is shown to reflect changes
         loadPatientDataAndAppointments()
         loadDoctors()
+        loadPromotedDoctors(forceRefresh = false)
         
         // Escutar chamadas recebidas
         setupIncomingCallListener()
@@ -95,16 +92,8 @@ class PatientActivity : AppCompatActivity() {
     private fun initializeViews() {
         recyclerViewDoctors = findViewById(R.id.recyclerViewDoctors)
         recyclerViewAppointments = findViewById(R.id.recyclerViewAppointments)
-        cardFeaturedDoctor = findViewById(R.id.cardFeaturedDoctor)
-        tvFeaturedDoctorName = findViewById(R.id.tvFeaturedDoctorName)
-        tvFeaturedDoctorSpecialization = findViewById(R.id.tvFeaturedDoctorSpecialization)
-        tvFeaturedDoctorPrice = findViewById(R.id.tvFeaturedDoctorPrice)
-        tvFeaturedDoctorRating = findViewById(R.id.tvFeaturedDoctorRating)
-        tvFeaturedDoctorReviews = findViewById(R.id.tvFeaturedDoctorReviews)
-        layoutFeaturedRating = findViewById(R.id.layoutFeaturedRating)
-        ivFeaturedDoctorPhoto = findViewById(R.id.ivFeaturedDoctorPhoto)
-        viewOnlineStatus = findViewById(R.id.viewOnlineStatus)
-        btnFeaturedSchedule = findViewById(R.id.btnFeaturedSchedule)
+        recyclerViewPromotedDoctors = findViewById(R.id.recyclerViewPromotedDoctors)
+        layoutPromotedDoctors = findViewById(R.id.layoutPromotedDoctors)
         btnFindHelp = findViewById(R.id.btnFindHelp)
         tvAppointmentCount = findViewById(R.id.tvAppointmentCount)
         viewAppointmentBadge = findViewById(R.id.viewAppointmentBadge)
@@ -122,11 +111,6 @@ class PatientActivity : AppCompatActivity() {
         btnFindHelp.setOnClickListener {
             val intent = Intent(this, AllDoctorsActivity::class.java)
             startActivity(intent)
-        }
-        
-        cardFeaturedDoctor.setOnClickListener {
-            val featuredDoctor = promotedDoctors.firstOrNull { it.isPromotionValid() }
-            featuredDoctor?.let { scheduleDoctor(it) }
         }
         
         ivViewAllDoctors.setOnClickListener {
@@ -161,7 +145,13 @@ class PatientActivity : AppCompatActivity() {
     }
     
     private fun setupRecyclerViews() {
-        // RecyclerView para doutores (horizontal)
+        // RecyclerView para doutores promovidos (horizontal)
+        recyclerViewPromotedDoctors.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        // Sem padding horizontal para manter o mesmo espaçamento dos cards disponíveis
+        recyclerViewPromotedDoctors.setPadding(0, 0, 0, 0)
+        recyclerViewPromotedDoctors.clipToPadding = false
+        
+        // RecyclerView para doutores disponíveis (horizontal)
         recyclerViewDoctors.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         
         // RecyclerView para consultas (vertical) - seção "Próximas Consultas"
@@ -233,9 +223,59 @@ class PatientActivity : AppCompatActivity() {
             }
     }
     
-    private fun loadDoctors() {
-        loadPromotedDoctors()
+    /**
+     * Carrega doutores promovidos usando o sistema de cache
+     * Segue exatamente o padrão do iOS
+     */
+    private fun loadPromotedDoctors(forceRefresh: Boolean = false) {
+        if (isLoadingPromotedDoctors) {
+            android.util.Log.d("PatientActivity", "⏭️ Já está carregando doutores promovidos, ignorando...")
+            return
+        }
         
+        isLoadingPromotedDoctors = true
+        android.util.Log.d("PatientActivity", "🔍 Carregando doutores promovidos (forceRefresh: $forceRefresh)...")
+        
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val doctors = if (forceRefresh) {
+                    patientService.forceRefreshPromotedDoctors()
+                } else {
+                    patientService.fetchPromotedDoctors()
+                }
+                
+                // Atualizar UI na thread principal
+                updatePromotedDoctorsUI(doctors)
+                
+            } catch (e: Exception) {
+                android.util.Log.e("PatientActivity", "❌ Erro ao carregar doutores promovidos", e)
+                Toast.makeText(this@PatientActivity, "Erro ao carregar doutores em destaque: ${e.message}", Toast.LENGTH_SHORT).show()
+                updatePromotedDoctorsUI(emptyList())
+            } finally {
+                isLoadingPromotedDoctors = false
+            }
+        }
+    }
+    
+    /**
+     * Atualiza a UI dos doutores promovidos
+     * Só mostra a seção se houver doutores promovidos (igual ao iOS)
+     */
+    private fun updatePromotedDoctorsUI(doctors: List<Doctor>) {
+        if (doctors.isEmpty()) {
+            // Só mostra a seção se houver doutores promovidos
+            layoutPromotedDoctors.visibility = View.GONE
+            android.util.Log.d("PatientActivity", "⚠️ Nenhum doutor promovido, ocultando seção")
+        } else {
+            layoutPromotedDoctors.visibility = View.VISIBLE
+            recyclerViewPromotedDoctors.adapter = PromotedDoctorsAdapter(doctors) { doctor ->
+                scheduleDoctor(doctor)
+            }
+            android.util.Log.d("PatientActivity", "✅ ${doctors.size} doutores promovidos exibidos")
+        }
+    }
+    
+    private fun loadDoctors() {
         android.util.Log.d("PatientActivity", "🔍 Loading available doctors from Firestore...")
         
         // Load all doctors and sort locally to avoid Firestore composite index requirements
@@ -276,100 +316,8 @@ class PatientActivity : AppCompatActivity() {
             }
     }
     
-    private fun loadPromotedDoctors() {
-        android.util.Log.d("PatientActivity", "🔍 Loading promoted doctors from Firestore...")
-        
-        firestore.collection("doutores")
-            .whereEqualTo("isPromoted", true)
-            .get()
-            .addOnSuccessListener { documents ->
-                android.util.Log.d("PatientActivity", "✅ Found ${documents.size()} promoted doctors")
-                
-                promotedDoctors.clear()
-                for (document in documents) {
-                    try {
-                        val doctor = Doctor.fromMap(document.data, document.id)
-                        if (doctor.isPromotionValid()) {
-                            promotedDoctors.add(doctor)
-                            android.util.Log.d("PatientActivity", "   Promoted Doctor: ${doctor.name}, Rating: ${doctor.rating}")
-                        } else {
-                            android.util.Log.d("PatientActivity", "   Skipped expired promotion: ${doctor.name}")
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("PatientActivity", "Error parsing promoted doctor ${document.id}", e)
-                    }
-                }
-                
-                android.util.Log.d("PatientActivity", "✅ Loaded ${promotedDoctors.size} valid promoted doctors")
-                updateDoctorsUI()
-            }
-            .addOnFailureListener { e ->
-                android.util.Log.e("PatientActivity", "❌ Error loading promoted doctors", e)
-            }
-    }
-    
-    private fun loadAllDoctors() {
-        android.util.Log.d("PatientActivity", "🔍 Loading all doctors (fallback method)...")
-        
-        firestore.collection("doutores")
-            .get()
-            .addOnSuccessListener { documents ->
-                android.util.Log.d("PatientActivity", "✅ Loaded ${documents.size()} doctors (fallback)")
-                
-                doctors.clear()
-                promotedDoctors.clear()
-                val tempDoctors = mutableListOf<Doctor>()
-                
-                for (document in documents) {
-                    try {
-                        val doctor = Doctor.fromMap(document.data, document.id)
-                        if (doctor.isPromoted && doctor.isPromotionValid()) {
-                            promotedDoctors.add(doctor)
-                        } else {
-                            tempDoctors.add(doctor)
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("PatientActivity", "Error parsing doctor ${document.id}", e)
-                    }
-                }
-                
-                // Sort by rating in descending order
-                tempDoctors.sortByDescending { it.rating }
-                
-                // Take only top 10 for available doctors
-                doctors.addAll(tempDoctors.take(10))
-                
-                android.util.Log.d("PatientActivity", "✅ Fallback complete: ${promotedDoctors.size} promoted, ${doctors.size} available")
-                updateDoctorsUI()
-            }
-            .addOnFailureListener { e ->
-                android.util.Log.e("PatientActivity", "❌ Error in fallback load", e)
-            }
-    }
-    
     private fun updateDoctorsUI() {
-        val featuredDoctor = promotedDoctors.firstOrNull()
-        if (featuredDoctor != null) {
-            cardFeaturedDoctor.visibility = View.VISIBLE
-            tvFeaturedDoctorName.text = featuredDoctor.name
-            tvFeaturedDoctorSpecialization.text = featuredDoctor.specialization
-            tvFeaturedDoctorPrice.text = featuredDoctor.getPriceFormatted()
-            if (featuredDoctor.rating > 0) {
-                layoutFeaturedRating.visibility = View.VISIBLE
-                tvFeaturedDoctorRating.text = String.format("%.1f", featuredDoctor.rating)
-            } else {
-                layoutFeaturedRating.visibility = View.GONE
-            }
-            viewOnlineStatus.visibility = if (featuredDoctor.isAvailable) View.VISIBLE else View.GONE
-            if (featuredDoctor.photoUrl.isNotEmpty()) {
-                Glide.with(this).load(featuredDoctor.photoUrl).centerCrop().into(ivFeaturedDoctorPhoto)
-            }
-        } else {
-            cardFeaturedDoctor.visibility = View.GONE
-        }
-        
-        val allDoctors = (promotedDoctors.drop(1) + doctors).distinctBy { it.id }
-        recyclerViewDoctors.adapter = DoctorAdapter(allDoctors) { doctor ->
+        recyclerViewDoctors.adapter = DoctorAdapter(doctors) { doctor ->
             scheduleDoctor(doctor)
         }
     }

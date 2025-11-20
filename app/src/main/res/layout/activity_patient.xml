@@ -34,211 +34,37 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="24dp" />
 
-            <!-- Featured Doctor Section -->
-            <TextView
-                android:id="@+id/tvFeaturedDoctors"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Doutores em Destaque"
-                android:textColor="@color/text_primary"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="12dp" />
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/cardFeaturedDoctor"
+            <!-- Doutores em Destaque Section (Horizontal Scroll) -->
+            <LinearLayout
+                android:id="@+id/layoutPromotedDoctors"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                app:cardCornerRadius="24dp"
-                app:cardElevation="6dp"
-                android:visibility="gone">
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_marginBottom="24dp">
 
-                <LinearLayout
+                <TextView
+                    android:id="@+id/tvFeaturedDoctors"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:text="Doutores em Destaque"
+                    android:textColor="@color/text_primary"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp"
+                    android:paddingHorizontal="0dp" />
 
-                    <!-- Photo Section -->
-                    <RelativeLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="280dp"
-                        android:background="@color/light_gray">
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerViewPromotedDoctors"
+                    android:layout_width="match_parent"
+                    android:layout_height="280dp"
+                    android:orientation="horizontal"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="0dp"
+                    android:clipToPadding="false"
+                    tools:listitem="@layout/item_promoted_doctor_card" />
 
-                        <ImageView
-                            android:id="@+id/ivFeaturedDoctorPhoto"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:contentDescription="Foto do doutor em destaque" />
-
-                        <!-- Gradient Overlay for better text visibility -->
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="100dp"
-                            android:layout_alignParentBottom="true"
-                            android:background="@drawable/bg_gradient_overlay" />
-
-                        <!-- Featured Badge -->
-                        <LinearLayout
-                            android:id="@+id/badgeFeatured"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_alignParentTop="true"
-                            android:layout_margin="16dp"
-                            android:background="@drawable/bg_featured_badge"
-                            android:gravity="center"
-                            android:orientation="horizontal"
-                            android:paddingHorizontal="12dp"
-                            android:paddingVertical="6dp">
-
-                            <ImageView
-                                android:layout_width="14dp"
-                                android:layout_height="14dp"
-                                android:src="@drawable/ic_star"
-                                android:tint="@color/white"
-                                android:layout_marginEnd="4dp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="EM DESTAQUE"
-                                android:textColor="@color/white"
-                                android:textSize="10sp"
-                                android:textStyle="bold"
-                                android:letterSpacing="0.1" />
-
-                        </LinearLayout>
-
-                        <!-- Info Overlay at Bottom -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_alignParentBottom="true"
-                            android:orientation="vertical"
-                            android:padding="16dp">
-
-                            <!-- Doctor Name and Online Status -->
-                            <LinearLayout
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical"
-                                android:layout_marginBottom="4dp">
-
-                                <TextView
-                                    android:id="@+id/tvFeaturedDoctorName"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:textColor="@color/white"
-                                    android:textSize="22sp"
-                                    android:textStyle="bold"
-                                    android:shadowColor="@color/black"
-                                    android:shadowDx="1"
-                                    android:shadowDy="1"
-                                    android:shadowRadius="3" />
-
-                                <View
-                                    android:id="@+id/viewOnlineStatus"
-                                    android:layout_width="10dp"
-                                    android:layout_height="10dp"
-                                    android:layout_marginStart="8dp"
-                                    android:background="@drawable/bg_online_status"
-                                    android:visibility="gone" />
-
-                            </LinearLayout>
-
-                            <!-- Specialization -->
-                            <TextView
-                                android:id="@+id/tvFeaturedDoctorSpecialization"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Psicólogo"
-                                android:textColor="@color/white"
-                                android:textSize="14sp"
-                                android:layout_marginBottom="4dp"
-                                android:shadowColor="@color/black"
-                                android:shadowDx="1"
-                                android:shadowDy="1"
-                                android:shadowRadius="3" />
-
-                            <!-- Rating -->
-                            <LinearLayout
-                                android:id="@+id/layoutFeaturedRating"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical"
-                                android:layout_marginBottom="8dp"
-                                android:visibility="gone">
-
-                                <ImageView
-                                    android:layout_width="12dp"
-                                    android:layout_height="12dp"
-                                    android:src="@drawable/ic_star"
-                                    android:tint="#FFD700"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:id="@+id/tvFeaturedDoctorRating"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:textColor="@color/white"
-                                    android:textSize="13sp"
-                                    android:textStyle="bold"
-                                    android:layout_marginEnd="4dp"
-                                    android:shadowColor="@color/black"
-                                    android:shadowDx="1"
-                                    android:shadowDy="1"
-                                    android:shadowRadius="3" />
-
-                                <TextView
-                                    android:id="@+id/tvFeaturedDoctorReviews"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:textColor="@color/white"
-                                    android:textSize="12sp"
-                                    android:shadowColor="@color/black"
-                                    android:shadowDx="1"
-                                    android:shadowDy="1"
-                                    android:shadowRadius="3" />
-
-                            </LinearLayout>
-
-                            <!-- Price -->
-                            <TextView
-                                android:id="@+id/tvFeaturedDoctorPrice"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textColor="@color/white"
-                                android:textSize="18sp"
-                                android:textStyle="bold"
-                                android:shadowColor="@color/black"
-                                android:shadowDx="1"
-                                android:shadowDy="1"
-                                android:shadowRadius="3" />
-
-                        </LinearLayout>
-
-                    </RelativeLayout>
-
-                    <!-- Schedule Button -->
-                    <Button
-                        android:id="@+id/btnFeaturedSchedule"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_margin="16dp"
-                        android:background="@drawable/bg_button_pressed"
-                        android:text="AGENDAR CONSULTA"
-                        android:textColor="@color/white"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:padding="14dp"
-                        android:letterSpacing="0.05" />
-
-                </LinearLayout>
-
-            </androidx.cardview.widget.CardView>
+            </LinearLayout>
 
             <!-- Available Doctors Section -->
             <LinearLayout

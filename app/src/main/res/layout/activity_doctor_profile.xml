@@ -175,25 +175,6 @@
             android:nestedScrollingEnabled="false"
             tools:listitem="@layout/item_review" />
 
-        <!-- Action Buttons -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="16dp"
-            android:orientation="horizontal">
-            
-            <!-- Book Appointment Button -->
-            <Button
-                android:id="@+id/btnBookAppointment"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:text="Agendar"
-                android:background="@drawable/bg_button_pressed"
-                android:textColor="@color/white"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-                
-        </LinearLayout>
 
     </LinearLayout>
     

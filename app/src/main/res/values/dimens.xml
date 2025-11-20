@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Card Dimensions - Responsive -->
+    <!-- Promoted Doctor Card: 200dp width, 280dp height (aspect ratio ~0.71) -->
+    <dimen name="promoted_card_width">200dp</dimen>
+    <dimen name="promoted_card_height">280dp</dimen>
+    <dimen name="promoted_card_margin_end">12dp</dimen>
+    
+    <!-- Regular Doctor Card: 180dp width, wrap_content height -->
+    <dimen name="doctor_card_width">180dp</dimen>
+    <dimen name="doctor_card_margin_end">12dp</dimen>
+    <dimen name="doctor_card_image_height">200dp</dimen>
+    
+    <!-- Card Corner Radius -->
+    <dimen name="card_corner_radius">20dp</dimen>
+    
+    <!-- Card Elevation -->
+    <dimen name="card_elevation">4dp</dimen>
+</resources>
+

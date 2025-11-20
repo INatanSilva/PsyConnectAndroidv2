@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="180dp"
+    android:layout_width="@dimen/doctor_card_width"
     android:layout_height="wrap_content"
-    android:layout_marginEnd="12dp"
+    android:layout_marginEnd="@dimen/doctor_card_margin_end"
     android:layout_marginBottom="16dp"
-    app:cardCornerRadius="20dp"
-    app:cardElevation="4dp"
+    app:cardCornerRadius="@dimen/card_corner_radius"
+    app:cardElevation="@dimen/card_elevation"
     app:cardBackgroundColor="@color/white">
 
     <LinearLayout
@@ -18,7 +18,7 @@
         <!-- Doctor Photo -->
         <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="@dimen/doctor_card_image_height"
             android:background="@color/light_gray">
 
             <ImageView
@@ -120,7 +120,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_button_pressed"
-                android:text="AGENDAR E PAGAR"
+                android:text="Conectar"
                 android:textColor="@color/white"
                 android:textSize="12sp"
                 android:textStyle="bold"
