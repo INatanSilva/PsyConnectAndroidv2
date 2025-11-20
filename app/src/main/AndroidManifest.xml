@@ -115,6 +115,21 @@
             android:label="Chat"
             android:parentActivityName=".ChatListActivity"
             android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <!-- Patient Notes Activity -->
+        <activity
+            android:name=".PatientNotesActivity"
+            android:exported="false"
+            android:label="Minhas Anotações"
+            android:parentActivityName=".PatientActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".PatientNoteDetailActivity"
+            android:exported="false"
+            android:label="Detalhes da Anotação"
+            android:parentActivityName=".PatientNotesActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
 
     </application>
 

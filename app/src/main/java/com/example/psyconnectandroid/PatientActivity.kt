@@ -126,7 +126,7 @@ class PatientActivity : AppCompatActivity() {
         }
         
         navNotes.setOnClickListener {
-            val intent = Intent(this, ChatListActivity::class.java)
+            val intent = Intent(this, PatientNotesActivity::class.java)
             startActivity(intent)
         }
         

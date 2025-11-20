@@ -123,7 +123,8 @@ class DoctorsActivity : AppCompatActivity() {
         }
         
         navNotes.setOnClickListener {
-            Toast.makeText(this, "Em breve: Tela de anotações", Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, PatientNotesActivity::class.java)
+            startActivity(intent)
         }
         
         navProfile.setOnClickListener {
