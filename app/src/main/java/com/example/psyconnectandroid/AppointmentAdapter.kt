@@ -101,8 +101,7 @@ class AppointmentAdapter(
             if (isScheduled) {
                 btnEnterVideo.visibility = View.VISIBLE
                 btnEnterVideo.setOnClickListener {
-                    // TODO: Implementar chamada de vídeo
-                    android.widget.Toast.makeText(itemView.context, "Funcionalidade de vídeo em desenvolvimento", android.widget.Toast.LENGTH_SHORT).show()
+                    startVideoCall(appointment)
                 }
             } else {
                 btnEnterVideo.visibility = View.GONE
@@ -292,6 +291,49 @@ class AppointmentAdapter(
                 else -> R.drawable.bg_status_pending
             }
             return ContextCompat.getDrawable(context, drawableId)
+        }
+        
+        private fun startVideoCall(appointment: Appointment) {
+            val context = itemView.context
+            val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+            if (currentUserId == null) {
+                android.widget.Toast.makeText(context, "Erro: usuário não autenticado", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            
+            // Determinar quem é o caller e quem é o callee
+            val (callerId, calleeId, patientName) = if (userType == UserType.PSYCHOLOGIST) {
+                // Doutor inicia chamada para paciente
+                Triple(currentUserId, appointment.patientId, appointment.patientName)
+            } else {
+                // Paciente inicia chamada para doutor
+                Triple(currentUserId, appointment.doctorId, appointment.doctorName)
+            }
+            
+            if (calleeId.isEmpty()) {
+                android.widget.Toast.makeText(context, "Erro: ID do destinatário não encontrado", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            
+            // Iniciar chamada
+            CallService.initiateCall(
+                patientId = calleeId,
+                patientName = patientName.ifEmpty { "Usuário" },
+                onSuccess = { callId ->
+                    // Abrir CallActivity como iniciador
+                    val intent = Intent(context, CallActivity::class.java).apply {
+                        putExtra("CALL_ID", callId)
+                        putExtra("IS_INITIATOR", true)
+                        putExtra("CALLER_ID", callerId)
+                        putExtra("PATIENT_NAME", patientName)
+                    }
+                    context.startActivity(intent)
+                },
+                onError = { e ->
+                    android.util.Log.e("AppointmentAdapter", "Erro ao iniciar chamada", e)
+                    android.widget.Toast.makeText(context, "Erro ao iniciar chamada: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            )
         }
         
         private fun openChatWithDoctor(appointment: Appointment) {

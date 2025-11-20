@@ -66,6 +66,30 @@ class PatientActivity : AppCompatActivity() {
         // Reload data every time the screen is shown to reflect changes
         loadPatientDataAndAppointments()
         loadDoctors()
+        
+        // Escutar chamadas recebidas
+        setupIncomingCallListener()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // Parar de escutar chamadas recebidas
+        CallService.stopListeningToIncomingCalls()
+    }
+    
+    private fun setupIncomingCallListener() {
+        CallService.onIncomingCall = { call ->
+            // Abrir IncomingCallActivity
+            val intent = Intent(this, IncomingCallActivity::class.java).apply {
+                putExtra("CALL_ID", call.callId)
+                putExtra("CALLER_ID", call.callerId)
+                putExtra("PATIENT_NAME", call.patientName)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            startActivity(intent)
+        }
+        
+        CallService.listenToIncomingCalls()
     }
     
     private fun initializeViews() {

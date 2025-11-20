@@ -3,6 +3,15 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.autofocus" />
 
     <application
         android:name=".PsyConnectApplication"
@@ -130,6 +139,22 @@
             android:label="Detalhes da Anotação"
             android:parentActivityName=".PatientNotesActivity"
             android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <!-- Video Call Activities -->
+        <activity
+            android:name=".CallActivity"
+            android:exported="false"
+            android:label="Chamada de Vídeo"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".IncomingCallActivity"
+            android:exported="false"
+            android:label="Chamada Recebida"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar"
+            android:launchMode="singleTop" />
 
     </application>
 
