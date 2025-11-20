@@ -24,6 +24,7 @@ class PatientNotesActivity : AppCompatActivity() {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val notes = mutableListOf<PatientNote>()
+    private var isLoading = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +38,8 @@ class PatientNotesActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        loadNotes()
+        // Não recarregar automaticamente para evitar duplicação
+        // loadNotes()
     }
 
     private fun initializeViews() {
@@ -68,12 +70,19 @@ class PatientNotesActivity : AppCompatActivity() {
     }
 
     private fun loadNotes() {
+        // Evitar múltiplas chamadas simultâneas
+        if (isLoading) {
+            return
+        }
+        
+        isLoading = true
         swipeRefresh.isRefreshing = true
         
         val currentUser = auth.currentUser
         if (currentUser == null) {
             showEmptyState()
             swipeRefresh.isRefreshing = false
+            isLoading = false
             return
         }
 
@@ -89,9 +98,12 @@ class PatientNotesActivity : AppCompatActivity() {
             .addOnSuccessListener { documents ->
                 android.util.Log.d("PatientNotesActivity", "Found ${documents.size()} notes")
 
+                // Limpar lista e usar Set para evitar duplicatas
                 notes.clear()
+                val noteIds = mutableSetOf<String>()
 
                 if (documents.isEmpty) {
+                    isLoading = false
                     showEmptyState()
                     return@addOnSuccessListener
                 }
@@ -105,6 +117,19 @@ class PatientNotesActivity : AppCompatActivity() {
                         val data = document.data
                         if (data != null) {
                             val note = PatientNote.fromMap(data, document.id)
+                            
+                            // Verificar se a nota já foi adicionada (evitar duplicatas)
+                            if (noteIds.contains(note.id)) {
+                                android.util.Log.w("PatientNotesActivity", "Note ${note.id} already added, skipping")
+                                processedCount++
+                                if (processedCount == totalCount) {
+                                    notes.sortByDescending { it.updatedAt?.toDate()?.time ?: 0L }
+                                    updateUI()
+                                }
+                                continue
+                            }
+                            
+                            noteIds.add(note.id)
                             val doctorId = note.doctorId
 
                             if (doctorId.isNotEmpty()) {
@@ -123,7 +148,11 @@ class PatientNotesActivity : AppCompatActivity() {
                                                 doctorName = doctorName,
                                                 doctorPhotoUrl = doctorPhotoUrl
                                             )
-                                            notes.add(updatedNote)
+                                            
+                                            // Verificar novamente antes de adicionar
+                                            if (!noteIds.contains(updatedNote.id) || !notes.any { it.id == updatedNote.id }) {
+                                                notes.add(updatedNote)
+                                            }
 
                                             processedCount++
                                             if (processedCount == totalCount) {
@@ -132,8 +161,10 @@ class PatientNotesActivity : AppCompatActivity() {
                                                 updateUI()
                                             }
                                         } else {
+                                            if (!notes.any { it.id == note.id }) {
+                                                notes.add(note)
+                                            }
                                             processedCount++
-                                            notes.add(note)
                                             if (processedCount == totalCount) {
                                                 notes.sortByDescending { it.updatedAt?.toDate()?.time ?: 0L }
                                                 updateUI()
@@ -141,16 +172,20 @@ class PatientNotesActivity : AppCompatActivity() {
                                         }
                                     }
                                     .addOnFailureListener {
+                                        if (!notes.any { it.id == note.id }) {
+                                            notes.add(note)
+                                        }
                                         processedCount++
-                                        notes.add(note)
                                         if (processedCount == totalCount) {
                                             notes.sortByDescending { it.updatedAt?.toDate()?.time ?: 0L }
                                             updateUI()
                                         }
                                     }
                             } else {
+                                if (!notes.any { it.id == note.id }) {
+                                    notes.add(note)
+                                }
                                 processedCount++
-                                notes.add(note)
                                 if (processedCount == totalCount) {
                                     notes.sortByDescending { it.updatedAt?.toDate()?.time ?: 0L }
                                     updateUI()
@@ -169,13 +204,20 @@ class PatientNotesActivity : AppCompatActivity() {
             }
             .addOnFailureListener { e ->
                 android.util.Log.e("PatientNotesActivity", "Error loading notes", e)
+                isLoading = false
                 showEmptyState()
                 swipeRefresh.isRefreshing = false
             }
     }
 
     private fun updateUI() {
+        isLoading = false
         swipeRefresh.isRefreshing = false
+        
+        // Remover duplicatas finais antes de atualizar UI
+        val uniqueNotes = notes.distinctBy { it.id }
+        notes.clear()
+        notes.addAll(uniqueNotes)
         
         if (notes.isEmpty()) {
             showEmptyState()
