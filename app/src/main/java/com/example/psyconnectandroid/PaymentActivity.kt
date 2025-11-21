@@ -262,19 +262,40 @@ class PaymentActivity : AppCompatActivity() {
     }
 
     private fun createAppointment() {
+        // Formatar horário para string (ex: "05:09 - 06:09")
+        val timeString = if (appointmentStartTime != null && appointmentEndTime != null) {
+            val timeFormat = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+            val start = appointmentStartTime!!.toDate()
+            val end = appointmentEndTime!!.toDate()
+            "${timeFormat.format(start)} - ${timeFormat.format(end)}"
+        } else {
+            "A definir"
+        }
+        
+        // Objeto de pagamento
+        val paymentObject = hashMapOf(
+            "paymentIntentId" to (paymentIntentId ?: ""),
+            "amountEurCents" to amount,
+            "currency" to "EUR",
+            "status" to "succeeded"
+        )
+        
         val appointment = hashMapOf(
             "id" to appointmentId,
             "patientId" to patientId,
             "doctorId" to doctorId,
-            "startTime" to appointmentStartTime,
-            "endTime" to appointmentEndTime,
-            "status" to "confirmed",
-            "paymentStatus" to "paid",
-            "paymentAmount" to amount,
-            "paymentIntentId" to paymentIntentId,
-            "createdAt" to com.google.firebase.Timestamp.now(),
             "doctorName" to doctorName,
-            "patientName" to patientName
+            "patientName" to patientName,
+            "status" to "Pago", // Status inicial: aguardando confirmação do médico
+            "type" to "consultation_request",
+            "createdAt" to com.google.firebase.Timestamp.now(),
+            "date" to (appointmentStartTime ?: com.google.firebase.Timestamp.now()), // Data da consulta
+            "time" to timeString, // Horário formatado
+            "scheduledStartTime" to appointmentStartTime,
+            "scheduledEndTime" to appointmentEndTime,
+            "startTime" to appointmentStartTime, // Mantido para compatibilidade
+            "endTime" to appointmentEndTime, // Mantido para compatibilidade
+            "payment" to paymentObject
         )
 
         firestore.collection("appointments").add(appointment)

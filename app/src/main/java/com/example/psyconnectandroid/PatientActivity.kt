@@ -37,6 +37,10 @@ class PatientActivity : AppCompatActivity() {
     private lateinit var navDoctors: LinearLayout
     private lateinit var navNotes: LinearLayout
     private lateinit var navProfile: LinearLayout
+    private lateinit var layoutAwaitingConfirmation: View
+    private lateinit var tvAwaitingDoctorName: TextView
+    private lateinit var tvAwaitingDate: TextView
+    private lateinit var tvAwaitingTime: TextView
     
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
@@ -46,6 +50,7 @@ class PatientActivity : AppCompatActivity() {
     private val appointments = mutableListOf<Appointment>()
     private var patientId: String? = null
     private var isLoadingPromotedDoctors = false
+    private var pendingAppointment: Appointment? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +68,7 @@ class PatientActivity : AppCompatActivity() {
         loadPatientDataAndAppointments()
         loadDoctors()
         loadPromotedDoctors(forceRefresh = false)
+        loadPendingAppointments()
         
         // Escutar chamadas recebidas
         setupIncomingCallListener()
@@ -98,6 +104,12 @@ class PatientActivity : AppCompatActivity() {
         tvAppointmentCount = findViewById(R.id.tvAppointmentCount)
         viewAppointmentBadge = findViewById(R.id.viewAppointmentBadge)
         ivViewAllDoctors = findViewById(R.id.ivViewAllDoctors)
+        
+        // Awaiting confirmation banner
+        layoutAwaitingConfirmation = findViewById(R.id.layoutAwaitingConfirmation)
+        tvAwaitingDoctorName = findViewById(R.id.tvAwaitingDoctorName)
+        tvAwaitingDate = findViewById(R.id.tvAwaitingDate)
+        tvAwaitingTime = findViewById(R.id.tvAwaitingTime)
         
         // Bottom navigation
         navHome = findViewById(R.id.navHome)
@@ -424,6 +436,118 @@ class PatientActivity : AppCompatActivity() {
                     appointments.clear()
                     updateAppointmentsUI()
                 }
+            }
+    }
+    
+    /**
+     * Carrega consultas aguardando confirmação (status "Pago" ou "Aguardando Confirmação")
+     * e exibe o banner no topo do dashboard
+     */
+    private fun loadPendingAppointments() {
+        val currentUserId = patientId ?: auth.currentUser?.uid
+        if (currentUserId == null) {
+            android.util.Log.e("PatientActivity", "❌ PatientId is null, cannot load pending appointments")
+            hideAwaitingConfirmationBanner()
+            return
+        }
+        
+        android.util.Log.d("PatientActivity", "🔍 Loading pending appointments for patientId: $currentUserId")
+        
+        firestore.collection("appointments")
+            .whereEqualTo("patientId", currentUserId)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("PatientActivity", "❌ Error loading pending appointments", error)
+                    hideAwaitingConfirmationBanner()
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot != null) {
+                    val pendingAppointments = snapshot.documents.mapNotNull { document ->
+                        try {
+                            val data = document.data ?: return@mapNotNull null
+                            val appointment = Appointment.fromMap(data, document.id)
+                            
+                            // Filtrar apenas consultas com status "Pago" ou "Aguardando Confirmação"
+                            if (appointment.isPendingConfirmation) {
+                                appointment
+                            } else {
+                                null
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("PatientActivity", "Error parsing appointment ${document.id}", e)
+                            null
+                        }
+                    }
+                    
+                    // Pegar a mais recente
+                    val mostRecentPending = pendingAppointments.firstOrNull()
+                    
+                    if (mostRecentPending != null) {
+                        android.util.Log.d("PatientActivity", "✅ Found pending appointment: ${mostRecentPending.doctorName}")
+                        pendingAppointment = mostRecentPending
+                        showAwaitingConfirmationBanner(mostRecentPending)
+                    } else {
+                        android.util.Log.d("PatientActivity", "⚠️ No pending appointments found")
+                        pendingAppointment = null
+                        hideAwaitingConfirmationBanner()
+                    }
+                }
+            }
+    }
+    
+    /**
+     * Exibe o banner de consulta aguardando confirmação
+     */
+    private fun showAwaitingConfirmationBanner(appointment: Appointment) {
+        layoutAwaitingConfirmation.visibility = View.VISIBLE
+        
+        // Atualizar dados do banner (versão minimalista)
+        // Nome do médico mais curto (apenas primeiro nome se muito longo)
+        val doctorName = appointment.doctorName
+        val shortName = if (doctorName.length > 15) {
+            doctorName.split(" ").firstOrNull() ?: doctorName
+        } else {
+            doctorName
+        }
+        tvAwaitingDoctorName.text = "Dr(a). $shortName"
+        tvAwaitingDate.text = appointment.getFormattedDate()
+        tvAwaitingTime.text = appointment.getFormattedTime()
+        
+        // Buscar imagem do médico se necessário
+        if (appointment.doctorId.isNotEmpty()) {
+            fetchDoctorImage(appointment.doctorId) { imageURL ->
+                // A imagem pode ser exibida se necessário no futuro
+                android.util.Log.d("PatientActivity", "Doctor image URL: $imageURL")
+            }
+        }
+    }
+    
+    /**
+     * Oculta o banner de consulta aguardando confirmação
+     */
+    private fun hideAwaitingConfirmationBanner() {
+        layoutAwaitingConfirmation.visibility = View.GONE
+    }
+    
+    /**
+     * Busca a imagem do médico
+     */
+    private fun fetchDoctorImage(doctorId: String, callback: (String?) -> Unit) {
+        firestore.collection("doutores")
+            .document(doctorId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val imageURL = document.getString("profileImageURL")
+                    callback(imageURL)
+                } else {
+                    callback(null)
+                }
+            }
+            .addOnFailureListener {
+                callback(null)
             }
     }
     
