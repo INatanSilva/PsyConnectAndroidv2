@@ -148,28 +148,28 @@ class ChatListActivity : AppCompatActivity() {
     
     private fun processChatDocuments(documents: com.google.firebase.firestore.QuerySnapshot) {
         chatRooms.clear()
-        
-        for (document in documents) {
-            try {
+                
+                for (document in documents) {
+                    try {
                 android.util.Log.d("ChatListActivity", "Processing chat document: ${document.id}")
                 android.util.Log.d("ChatListActivity", "Chat data: ${document.data}")
                 
-                val chatRoom = ChatRoom.fromMap(document.data, document.id)
-                chatRooms.add(chatRoom)
+                        val chatRoom = ChatRoom.fromMap(document.data, document.id)
+                        chatRooms.add(chatRoom)
                 
                 android.util.Log.d("ChatListActivity", "Successfully parsed chat: patientId=${chatRoom.patientId}, doctorId=${chatRoom.doctorId}")
-            } catch (e: Exception) {
-                android.util.Log.e("ChatListActivity", "Error parsing chat room ${document.id}", e)
+                    } catch (e: Exception) {
+                        android.util.Log.e("ChatListActivity", "Error parsing chat room ${document.id}", e)
                 e.printStackTrace()
-            }
-        }
-        
-        // Sort by last message timestamp
-        chatRooms.sortByDescending { it.lastMessageTimestamp?.toDate()?.time ?: 0L }
-        
+                    }
+                }
+                
+                // Sort by last message timestamp
+                chatRooms.sortByDescending { it.lastMessageTimestamp?.toDate()?.time ?: 0L }
+                
         android.util.Log.d("ChatListActivity", "Total chats loaded: ${chatRooms.size}")
         
-        updateUI()
+                updateUI()
     }
     
     private fun updateUI() {

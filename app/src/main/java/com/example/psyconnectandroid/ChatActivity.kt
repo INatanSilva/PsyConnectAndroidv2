@@ -327,8 +327,8 @@ class ChatActivity : AppCompatActivity() {
         if (chatRoomId == null) return
         
         firestore.collection("chats")
-            .document(chatRoomId)
-            .update("unreadCount", 0)
+                    .document(chatRoomId)
+                    .update("unreadCount", 0)
             .addOnFailureListener { e ->
                 android.util.Log.e("ChatActivity", "Error resetting unread count", e)
             }

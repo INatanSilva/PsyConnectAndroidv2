@@ -1,129 +1,222 @@
 package com.example.psyconnectandroid
 
 import android.util.Log
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
-import java.net.HttpURLConnection
-import java.net.URL
+import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 
 /**
- * Service to interact with Stripe payment gateway API
- * Base URL: https://stripe-backend-psyconnect.onrender.com
- * 
- * This implementation follows the same structure as the iOS app
+ * Serviço para integração com backend do Stripe
  */
-object StripeService {
-    
-    private const val BASE_URL = "https://stripe-backend-psyconnect.onrender.com"
-    private const val TAG = "StripeService"
+class StripeService {
+    private val TAG = "StripeService"
+    private val baseUrl = "https://stripe-backend-psyconnect.onrender.com"
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
+    private val gson = Gson()
     
     /**
-     * Creates a Payment Intent for an appointment (same structure as iOS)
-     * @param amount Amount in cents (e.g., 2000 for 20.00 EUR)
-     * @param currency Currency code (e.g., "eur")
-     * @param stripeAccountId Stripe Connect Account ID of the doctor (providerAccountId)
-     * @param appointmentId ID of the appointment
-     * @param description Description of the payment
-     * @return PaymentIntentResponse with clientSecret, paymentIntentId, and publishableKey
+     * Resposta de saldo da conta
      */
-    fun createPaymentIntent(
+    data class BalanceResponse(
+        val available: List<BalanceAmount>,
+        val pending: List<BalanceAmount>
+    )
+    
+    /**
+     * Valor de saldo
+     */
+    data class BalanceAmount(
+        val amount: Int,
+        val currency: String
+    )
+    
+    /**
+     * Requisição de saldo
+     */
+    data class BalanceRequest(
+        val providerAccountId: String
+    )
+    
+    /**
+     * Requisição de Payment Intent
+     */
+    data class PaymentIntentRequest(
+        val amount: Int,
+        val currency: String,
+        val stripeAccountId: String,
+        val appointmentId: String,
+        val description: String
+    )
+    
+    /**
+     * Resposta de Payment Intent
+     */
+    data class PaymentIntentResponse(
+        val clientSecret: String,
+        val paymentIntentId: String,
+        val publishableKey: String
+    )
+    
+    /**
+     * Result wrapper para operações assíncronas
+     */
+    sealed class Result<out T> {
+        data class Success<T>(val data: T) : Result<T>()
+        data class Failure(val error: Throwable) : Result<Nothing>()
+        
+        inline fun <R> onSuccess(action: (T) -> R): Result<R> {
+            return when (this) {
+                is Success -> try {
+                    Success(action(data))
+                } catch (e: Exception) {
+                    Failure(e)
+                }
+                is Failure -> this
+            }
+        }
+        
+        inline fun onFailure(action: (Throwable) -> Unit) {
+            if (this is Failure) {
+                action(error)
+            }
+        }
+    }
+    
+    /**
+     * Verifica se o servidor está online
+     */
+    suspend fun pingServer(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/health")
+                .get()
+                .build()
+            
+            val response = client.newCall(request).execute()
+            response.isSuccessful
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erro ao fazer ping no servidor", e)
+            false
+        }
+    }
+    
+    /**
+     * Obtém o saldo da conta Stripe
+     * Retry com backoff exponencial (1s, 2s, 3s)
+     */
+    suspend fun getAccountBalance(providerAccountId: String): BalanceResponse? = withContext(Dispatchers.IO) {
+        val delays = listOf(1000L, 2000L, 3000L)
+        var lastException: Exception? = null
+        
+        // Health check antes da chamada
+        if (!pingServer()) {
+            Log.w(TAG, "⚠️ Servidor não está respondendo")
+        }
+        
+        for ((index, delay) in delays.withIndex()) {
+            try {
+                val requestBody = gson.toJson(BalanceRequest(providerAccountId))
+                    .toRequestBody("application/json".toMediaType())
+                
+                val request = Request.Builder()
+                    .url("$baseUrl/api/account-balance")
+                    .post(requestBody)
+                    .addHeader("Content-Type", "application/json")
+                    .build()
+                
+                val response = client.newCall(request).execute()
+                
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    if (responseBody != null) {
+                        val balance = gson.fromJson(responseBody, BalanceResponse::class.java)
+                        Log.d(TAG, "✅ Saldo carregado: disponível=${balance.available.sumOf { it.amount }}, pendente=${balance.pending.sumOf { it.amount }}")
+                        return@withContext balance
+                    }
+                } else {
+                    Log.e(TAG, "❌ Erro na resposta: ${response.code} - ${response.message}")
+                }
+            } catch (e: Exception) {
+                lastException = e
+                Log.e(TAG, "❌ Tentativa ${index + 1} falhou", e)
+                
+                if (index < delays.size - 1) {
+                    kotlinx.coroutines.delay(delay)
+                }
+            }
+        }
+        
+        Log.e(TAG, "❌ Todas as tentativas falharam", lastException)
+        null
+    }
+    
+    /**
+     * Cria um Payment Intent no Stripe
+     */
+    suspend fun createPaymentIntent(
         amount: Int,
-        currency: String = "eur",
+        currency: String,
         stripeAccountId: String,
         appointmentId: String,
-        description: String = "Consulta médica"
-    ): Result<PaymentIntentResponse> {
-        return try {
-            val url = URL("$BASE_URL/api/create-payment-intent")
-            val connection = url.openConnection() as HttpURLConnection
+        description: String
+    ): Result<PaymentIntentResponse> = withContext(Dispatchers.IO) {
+        try {
+            val requestBody = gson.toJson(
+                PaymentIntentRequest(
+                    amount = amount,
+                    currency = currency,
+                    stripeAccountId = stripeAccountId,
+                    appointmentId = appointmentId,
+                    description = description
+                )
+            ).toRequestBody("application/json".toMediaType())
             
-            connection.requestMethod = "POST"
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.doOutput = true
-            connection.doInput = true
-            connection.connectTimeout = 30000 // 30 segundos para cold start
-            connection.readTimeout = 30000
+            val request = Request.Builder()
+                .url("$baseUrl/api/create-payment-intent")
+                .post(requestBody)
+                .addHeader("Content-Type", "application/json")
+                .build()
             
-            // Create JSON body - mesma estrutura do iOS
-            // Platform takes 10% from the payment
-            val platformFee = (amount * 0.10).toInt()
+            val response = client.newCall(request).execute()
             
-            val jsonBody = JSONObject().apply {
-                put("amount", amount)
-                put("currency", currency)
-                put("providerAccountId", stripeAccountId)  // iOS usa providerAccountId
-                put("appointmentId", appointmentId)
-                put("description", "$description - $appointmentId")
-                put("applicationFeeAmount", platformFee)  // 10% platform fee
-                put("paymentMethodTypes", JSONArray().apply {
-                    put("card")
-                })
-            }
-            
-            Log.d(TAG, "🚀 Creating Payment Intent...")
-            Log.d(TAG, "   URL: $url")
-            Log.d(TAG, "   Body: $jsonBody")
-            
-            // Send request
-            val writer = OutputStreamWriter(connection.outputStream)
-            writer.write(jsonBody.toString())
-            writer.flush()
-            writer.close()
-            
-            // Read response
-            val responseCode = connection.responseCode
-            Log.d(TAG, "📡 Response Code: $responseCode")
-            
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val reader = BufferedReader(InputStreamReader(connection.inputStream))
-                val response = StringBuilder()
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    response.append(line)
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string()
+                if (responseBody != null) {
+                    val paymentIntent = gson.fromJson(responseBody, PaymentIntentResponse::class.java)
+                    Log.d(TAG, "✅ Payment Intent criado: ${paymentIntent.paymentIntentId}")
+                    Result.Success(paymentIntent)
+                } else {
+                    Result.Failure(Exception("Resposta vazia do servidor"))
                 }
-                reader.close()
-                
-                val jsonResponse = JSONObject(response.toString())
-                Log.d(TAG, "✅ Payment Intent Created")
-                Log.d(TAG, "   Response: $jsonResponse")
-                
-                // iOS recebe: clientSecret, paymentIntentId, publishableKey
-                val clientSecret = jsonResponse.getString("clientSecret")
-                val paymentIntentId = jsonResponse.getString("paymentIntentId")
-                val publishableKey = jsonResponse.getString("publishableKey")
-                
-                Result.success(PaymentIntentResponse(clientSecret, paymentIntentId, publishableKey))
             } else {
-                val errorReader = BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream))
-                val errorResponse = StringBuilder()
-                var line: String?
-                while (errorReader.readLine().also { line = it } != null) {
-                    errorResponse.append(line)
-                }
-                errorReader.close()
-                
-                Log.e(TAG, "❌ Error creating Payment Intent: HTTP $responseCode")
-                Log.e(TAG, "   Error: $errorResponse")
-                Result.failure(Exception("HTTP Error $responseCode: $errorResponse"))
+                val errorMessage = response.body?.string() ?: "Erro desconhecido"
+                Log.e(TAG, "❌ Erro na resposta: ${response.code} - $errorMessage")
+                Result.Failure(Exception("Erro ${response.code}: $errorMessage"))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Exception creating Payment Intent", e)
-            Result.failure(e)
+            Log.e(TAG, "❌ Erro ao criar Payment Intent", e)
+            Result.Failure(e)
+        }
+    }
+    
+    companion object {
+        @Volatile
+        private var INSTANCE: StripeService? = null
+        
+        fun getInstance(): StripeService {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: StripeService().also { INSTANCE = it }
+            }
         }
     }
 }
-
-/**
- * Response from creating a Payment Intent
- * @param clientSecret The client secret to use with Stripe SDK
- * @param paymentIntentId The payment intent ID
- * @param publishableKey The Stripe publishable key
- */
-data class PaymentIntentResponse(
-    val clientSecret: String,
-    val paymentIntentId: String,
-    val publishableKey: String
-)

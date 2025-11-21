@@ -51,6 +51,7 @@
             android:parentActivityName=".PatientActivity"
             android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
 
+        <!-- DoctorProfileActivity for patients viewing doctor profile -->
         <activity
             android:name=".DoctorProfileActivity"
             android:exported="false"
@@ -89,11 +90,35 @@
             android:exported="false"
             android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
             
+        <!-- DoctorProfileActivity is also used by doctors to edit their own profile -->
+        <!-- It's the same activity, so no duplicate declaration needed -->
+            
         <activity
             android:name=".DoctorScheduleActivity"
             android:exported="false"
             android:label="Minha Agenda"
             android:parentActivityName=".DoctorDashboardActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".DoctorPatientsActivity"
+            android:exported="false"
+            android:label="Pacientes"
+            android:parentActivityName=".DoctorDashboardActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".DoctorNotesListActivity"
+            android:exported="false"
+            android:label="Anotações"
+            android:parentActivityName=".DoctorDashboardActivity"
+            android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
+            
+        <activity
+            android:name=".PatientNoteActivity"
+            android:exported="false"
+            android:label="Anotação do Paciente"
+            android:parentActivityName=".DoctorPatientsActivity"
             android:theme="@style/Theme.PsyConnectAndroid.NoActionBar" />
 
         <activity

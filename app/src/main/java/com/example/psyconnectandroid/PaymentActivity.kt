@@ -120,7 +120,7 @@ class PaymentActivity : AppCompatActivity() {
                 
                 // Step 2: Create Payment Intent
                 Log.d(TAG, "📋 Step 2: Creating Payment Intent...")
-                val result = StripeService.createPaymentIntent(
+                val result = StripeService.getInstance().createPaymentIntent(
                     amount = amount,
                     currency = "eur",
                     stripeAccountId = stripeAccountId,

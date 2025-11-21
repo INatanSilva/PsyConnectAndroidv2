@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Insira o Account ID da sua conta Stripe Connect:"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:layout_marginBottom="16dp" />
+
+    <EditText
+        android:id="@+id/etAccountId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="acct_xxxxxxxxxxxxxxxxxx"
+        android:inputType="text"
+        android:background="@drawable/bg_message_input"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnInstructions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Como obter o Account ID?"
+        android:background="@drawable/bg_button"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:padding="12dp"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/btnSave"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Salvar Configuração"
+        android:background="@drawable/bg_button_pressed"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:padding="12dp" />
+
+</LinearLayout>
+
+

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Patient Name -->
+        <TextView
+            android:id="@+id/tvPatientName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Nome do Paciente"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pago"
+            android:textColor="@color/green"
+            android:textSize="14sp"
+            android:background="@drawable/bg_filter_selected"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Date and Time -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:id="@+id/tvDate"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="01/01/2024"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="14:00"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <!-- Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <Button
+                android:id="@+id/btnAccept"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Aceitar"
+                android:background="@drawable/bg_button_pressed"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btnReject"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Recusar"
+                android:background="@drawable/bg_button"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btnCall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ligar"
+                android:background="@drawable/bg_button_pressed"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btnChat"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Chat"
+                android:background="@drawable/bg_button"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btnNotes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Notas"
+                android:background="@drawable/bg_button"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
+
+

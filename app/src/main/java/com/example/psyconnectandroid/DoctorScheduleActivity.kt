@@ -1,80 +1,169 @@
 package com.example.psyconnectandroid
 
-import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
+import android.widget.CalendarView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.util.Calendar
+import java.util.Date
 
+/**
+ * Agenda do doutor - gerenciamento de disponibilidade
+ */
 class DoctorScheduleActivity : AppCompatActivity() {
-
-    private lateinit var toolbar: Toolbar
+    
+    // Views
+    private lateinit var calendarView: CalendarView
     private lateinit var rvSchedule: RecyclerView
-    private lateinit var appointmentAdapter: AppointmentAdapter
-
-    private val firestore = FirebaseFirestore.getInstance()
+    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
+    private lateinit var btnAddSlot: Button
+    private lateinit var tvSelectedDate: TextView
+    
+    // Services
+    private val availabilityService = DoctorAvailabilityService()
     private val auth = FirebaseAuth.getInstance()
-    private val appointments = mutableListOf<Appointment>()
-
+    
+    // Adapter
+    private lateinit var adapter: ScheduleSlotAdapter
+    
+    // Data
+    private var selectedDate: Date = Date()
+    private val slots = mutableListOf<DoctorAvailability>()
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_doctor_schedule)
-
+        
         initializeViews()
-        setupToolbar()
         setupRecyclerView()
-        loadAppointments()
+        setupClickListeners()
+        setupSwipeRefresh()
+        loadSchedule()
     }
-
+    
     private fun initializeViews() {
-        toolbar = findViewById(R.id.toolbarDoctorSchedule)
-        rvSchedule = findViewById(R.id.rvDoctorSchedule)
+        calendarView = findViewById(R.id.calendarView)
+        rvSchedule = findViewById(R.id.rvSchedule)
+        swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
+        btnAddSlot = findViewById(R.id.btnAddSlot)
+        tvSelectedDate = findViewById(R.id.tvSelectedDate)
+        
+        // Set today as selected date
+        calendarView.date = System.currentTimeMillis()
+        updateSelectedDateText()
     }
-
-    private fun setupToolbar() {
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        toolbar.setNavigationOnClickListener {
-            finish()
-        }
-    }
-
+    
     private fun setupRecyclerView() {
-        appointmentAdapter = AppointmentAdapter(appointments, UserType.PSYCHOLOGIST) { appointment ->
-            val intent = Intent(this, AppointmentDetailsDoctorActivity::class.java)
-            intent.putExtra("APPOINTMENT_ID", appointment.id)
-            startActivity(intent)
+        adapter = ScheduleSlotAdapter(slots) { slot ->
+            // Toggle availability or cancel appointment
+            if (slot.isBooked) {
+                cancelAppointment(slot)
+            } else {
+                toggleAvailability(slot)
+            }
         }
         rvSchedule.layoutManager = LinearLayoutManager(this)
-        rvSchedule.adapter = appointmentAdapter
+        rvSchedule.adapter = adapter
     }
-
-    private fun loadAppointments() {
+    
+    private fun setupClickListeners() {
+        calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
+            val calendar = Calendar.getInstance()
+            calendar.set(year, month, dayOfMonth)
+            selectedDate = calendar.time
+            updateSelectedDateText()
+            loadSchedule()
+        }
+        
+        btnAddSlot.setOnClickListener {
+            // TODO: Implementar adicionar slot
+            Toast.makeText(this, "Adicionar slot será implementado", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun setupSwipeRefresh() {
+        swipeRefreshLayout.setOnRefreshListener {
+            loadSchedule()
+        }
+    }
+    
+    private fun updateSelectedDateText() {
+        val dateFormat = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+        tvSelectedDate.text = "Agenda de ${dateFormat.format(selectedDate)}"
+    }
+    
+    private fun loadSchedule() {
         val doctorId = auth.currentUser?.uid
         if (doctorId == null) {
-            Toast.makeText(this, "Doutor não autenticado.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Erro: Usuário não autenticado", Toast.LENGTH_SHORT).show()
             return
         }
-
-        firestore.collection("appointments")
-            .whereEqualTo("doctorId", doctorId)
-            .orderBy("startTime", Query.Direction.DESCENDING)
-            .get()
-            .addOnSuccessListener { documents ->
-                appointments.clear()
-                for (document in documents) {
-                    val appointment = Appointment.fromMap(document.data, document.id)
-                    appointments.add(appointment)
+        
+        swipeRefreshLayout.isRefreshing = true
+        
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val schedule = availabilityService.getDoctorSchedule(doctorId, selectedDate)
+                slots.clear()
+                slots.addAll(schedule)
+                adapter.notifyDataSetChanged()
+            } catch (e: Exception) {
+                android.util.Log.e("DoctorSchedule", "❌ Erro ao carregar agenda", e)
+                Toast.makeText(this@DoctorScheduleActivity, "Erro ao carregar agenda", Toast.LENGTH_SHORT).show()
+            } finally {
+                swipeRefreshLayout.isRefreshing = false
+            }
+        }
+    }
+    
+    private fun toggleAvailability(slot: DoctorAvailability) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val success = availabilityService.updateAvailability(
+                    slot.id,
+                    !slot.isAvailable
+                )
+                if (success) {
+                    loadSchedule()
+                } else {
+                    Toast.makeText(this@DoctorScheduleActivity, "Erro ao atualizar disponibilidade", Toast.LENGTH_SHORT).show()
                 }
-                appointmentAdapter.notifyDataSetChanged()
+            } catch (e: Exception) {
+                android.util.Log.e("DoctorSchedule", "❌ Erro ao atualizar disponibilidade", e)
+                Toast.makeText(this@DoctorScheduleActivity, "Erro ao atualizar disponibilidade", Toast.LENGTH_SHORT).show()
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(this, "Erro ao carregar agenda: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun cancelAppointment(slot: DoctorAvailability) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val success = availabilityService.cancelAppointment(slot.id)
+                if (success) {
+                    Toast.makeText(this@DoctorScheduleActivity, "Agendamento cancelado", Toast.LENGTH_SHORT).show()
+                    loadSchedule()
+                } else {
+                    Toast.makeText(this@DoctorScheduleActivity, "Erro ao cancelar agendamento", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("DoctorSchedule", "❌ Erro ao cancelar agendamento", e)
+                Toast.makeText(this@DoctorScheduleActivity, "Erro ao cancelar agendamento", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        loadSchedule()
     }
 }

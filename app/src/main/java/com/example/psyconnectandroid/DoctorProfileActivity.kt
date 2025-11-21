@@ -2,323 +2,383 @@ package com.example.psyconnectandroid
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.Button
-import android.widget.ImageButton
+import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.util.Locale
-import kotlin.comparisons.nullsLast
 
+/**
+ * Perfil do doutor - configurações e financeiro
+ * Implementa configuração do Stripe e visualização de saldo
+ */
 class DoctorProfileActivity : AppCompatActivity() {
-
-    private lateinit var ivDoctorProfilePhoto: ImageView
-    private lateinit var btnProfileBack: ImageButton
-    private lateinit var tvDoctorProfileName: TextView
-    private lateinit var tvDoctorProfileSpecialization: TextView
-    private lateinit var tvDoctorProfileRating: TextView
-    private lateinit var tvDoctorProfileAbout: TextView
-    private lateinit var rvAvailability: RecyclerView
-    private lateinit var rvReviews: RecyclerView
-    private lateinit var skeletonDoctorProfile: android.widget.ScrollView
-    private lateinit var doctorProfileContent: android.widget.ScrollView
-
+    
+    // Views - Informações profissionais
+    private lateinit var btnBack: Button
+    private lateinit var ivProfileImage: ImageView
+    private lateinit var tvName: TextView
+    private lateinit var tvEmail: TextView
+    private lateinit var switchIsOnline: Switch
+    private lateinit var etPriceEurCents: EditText
+    private lateinit var btnSavePrice: Button
+    private lateinit var btnConfigureStripe: Button
+    private lateinit var tvStripeStatus: TextView
+    private lateinit var layoutBalance: LinearLayout
+    private lateinit var tvBalance: TextView
+    private lateinit var tvPendingBalance: TextView
+    private lateinit var btnUpdateBalance: Button
+    private lateinit var progressBalance: ProgressBar
+    private lateinit var btnPromote: Button
+    
+    // Services
     private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
+    private val stripeService = StripeService.getInstance()
+    
+    // Data
     private var doctorId: String? = null
-    private var doctorName: String? = null
-    private var doctorPhotoUrl: String? = null
-
-    private lateinit var availabilityAdapter: AvailabilityAdapter
-    private lateinit var reviewsAdapter: ReviewsAdapter
-
-    private val availabilitySlots = mutableListOf<AvailabilitySlot>()
-    private val reviews = mutableListOf<Review>()
-
+    private var profileImageURL: String? = null
+    private var stripeConfigured: Boolean = false
+    private var stripeAccountId: String? = null
+    private var isLoadingBalance: Boolean = false
+    
+    // Currency formatter
+    private val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("pt", "PT")).apply {
+        currency = java.util.Currency.getInstance("EUR")
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_doctor_profile)
-
-        doctorId = intent.getStringExtra("DOCTOR_ID")
-
+        setContentView(R.layout.activity_doctor_profile_settings)
+        
+        doctorId = auth.currentUser?.uid
         if (doctorId == null) {
-            Toast.makeText(this, "Erro: ID do doutor não encontrado.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Erro: Usuário não autenticado", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
-
-        initializeViews()
-        setupRecyclerViews()
-        setupListeners()
-        loadDoctorProfile()
-        loadAvailability()
-        loadReviews()
-    }
-
-    private fun initializeViews() {
-        ivDoctorProfilePhoto = findViewById(R.id.ivDoctorProfilePhoto)
-        btnProfileBack = findViewById(R.id.btnProfileBack)
-        tvDoctorProfileName = findViewById(R.id.tvDoctorProfileName)
-        tvDoctorProfileSpecialization = findViewById(R.id.tvDoctorProfileSpecialization)
-        tvDoctorProfileRating = findViewById(R.id.tvDoctorProfileRating)
-        tvDoctorProfileAbout = findViewById(R.id.tvDoctorProfileAbout)
-        rvAvailability = findViewById(R.id.rvAvailability)
-        rvReviews = findViewById(R.id.rvReviews)
-        skeletonDoctorProfile = findViewById(R.id.skeletonDoctorProfile)
-        doctorProfileContent = findViewById(R.id.doctorProfileContent)
         
-        // Start skeleton animation
-        startSkeletonAnimation()
+        initializeViews()
+        setupClickListeners()
+        loadProfile()
+        
+        // Verificar status do Stripe após 1 segundo (onboarding automático)
+        Handler(Looper.getMainLooper()).postDelayed({
+            checkStripeStatus()
+        }, 1000)
     }
     
-    private fun startSkeletonAnimation() {
-        val animation = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.skeleton_shimmer)
-        skeletonDoctorProfile.findViewById<View>(R.id.skeletonDoctorProfile)?.startAnimation(animation)
+    private fun initializeViews() {
+        btnBack = findViewById(R.id.btnBack)
+        ivProfileImage = findViewById(R.id.ivProfileImage)
+        tvName = findViewById(R.id.tvName)
+        tvEmail = findViewById(R.id.tvEmail)
+        switchIsOnline = findViewById(R.id.switchIsOnline)
+        etPriceEurCents = findViewById(R.id.etPriceEurCents)
+        btnSavePrice = findViewById(R.id.btnSavePrice)
+        btnConfigureStripe = findViewById(R.id.btnConfigureStripe)
+        tvStripeStatus = findViewById(R.id.tvStripeStatus)
+        layoutBalance = findViewById(R.id.layoutBalance)
+        tvBalance = findViewById(R.id.tvBalance)
+        tvPendingBalance = findViewById(R.id.tvPendingBalance)
+        btnUpdateBalance = findViewById(R.id.btnUpdateBalance)
+        progressBalance = findViewById(R.id.progressBalance)
+        btnPromote = findViewById(R.id.btnPromote)
     }
     
-    private fun showSkeleton() {
-        skeletonDoctorProfile.visibility = View.VISIBLE
-        doctorProfileContent.visibility = View.GONE
-    }
-    
-    private fun hideSkeleton() {
-        skeletonDoctorProfile.visibility = View.GONE
-        doctorProfileContent.visibility = View.VISIBLE
-    }
-    
-    private fun setupRecyclerViews() {
-        // Availability
-        availabilityAdapter = AvailabilityAdapter(availabilitySlots) { slot ->
-            val intent = Intent(this, BookingConfirmationActivity::class.java)
-            intent.putExtra("DOCTOR_ID", doctorId)
-            intent.putExtra("SLOT_ID", slot.id)
-            startActivity(intent)
-        }
-        rvAvailability.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        rvAvailability.adapter = availabilityAdapter
-
-        // Reviews
-        reviewsAdapter = ReviewsAdapter(reviews)
-        rvReviews.layoutManager = LinearLayoutManager(this)
-        rvReviews.adapter = reviewsAdapter
-    }
-
-    private fun setupListeners() {
-        btnProfileBack.setOnClickListener {
+    private fun setupClickListeners() {
+        btnBack.setOnClickListener {
             finish()
         }
+        
+        ivProfileImage.setOnClickListener {
+            // TODO: Implementar upload de imagem
+            Toast.makeText(this, "Upload de imagem será implementado", Toast.LENGTH_SHORT).show()
+        }
+        
+        switchIsOnline.setOnCheckedChangeListener { _, isChecked ->
+            updateOnlineStatus(isChecked)
+        }
+        
+        btnSavePrice.setOnClickListener {
+            savePrice()
+        }
+        
+        btnConfigureStripe.setOnClickListener {
+            showStripeConfigurationDialog()
+        }
+        
+        btnUpdateBalance.setOnClickListener {
+            loadAccountBalance()
+        }
+        
+        btnPromote.setOnClickListener {
+            activatePromotion()
+        }
     }
-
-    private fun loadDoctorProfile() {
+    
+    private fun loadProfile() {
         doctorId?.let { id ->
-            // Tentar carregar do cache primeiro
-            val cachedDoctor = DoctorCache.get(id)
-            if (cachedDoctor != null) {
-                android.util.Log.d("DoctorProfile", "📦 Carregando perfil do doutor do cache")
-                populateDoctorInfo(cachedDoctor)
-            }
-            
-            // Buscar do Firestore em background para atualizar
             firestore.collection("doutores").document(id)
                 .get()
                 .addOnSuccessListener { document ->
                     if (document != null && document.exists()) {
-                        val doctor = Doctor.fromMap(document.data!!, document.id)
-                        // Salvar no cache
-                        DoctorCache.put(doctor.id, doctor)
-                        if (doctor.photoUrl.isNotEmpty()) {
-                            PhotoCache.put(doctor.id, doctor.photoUrl)
+                        val data = document.data ?: return@addOnSuccessListener
+                        
+                        tvName.text = data["name"] as? String ?: ""
+                        tvEmail.text = data["email"] as? String ?: ""
+                        switchIsOnline.isChecked = (data["isOnline"] as? Boolean) ?: false
+                        
+                        val priceEurCents = (data["priceEurCents"] as? Number)?.toInt() ?: 0
+                        etPriceEurCents.setText(String.format(Locale.getDefault(), "%.2f", priceEurCents / 100.0))
+                        
+                        profileImageURL = data["profileImageURL"] as? String
+                        if (!profileImageURL.isNullOrEmpty()) {
+                            Glide.with(this)
+                                .load(profileImageURL)
+                                .placeholder(R.drawable.ic_person)
+                                .error(R.drawable.ic_person)
+                                .circleCrop()
+                                .into(ivProfileImage)
                         }
-                        populateDoctorInfo(doctor)
-                    } else {
-                        if (cachedDoctor == null) {
-                            Toast.makeText(this, "Doutor não encontrado.", Toast.LENGTH_SHORT).show()
-                        }
+                        
+                        stripeConfigured = (data["stripeConfigured"] as? Boolean) ?: false
+                        stripeAccountId = data["stripeAccountId"] as? String
+                        
+                        updateStripeUI()
+                        
+                        val isPromoted = (data["isPromoted"] as? Boolean) ?: false
+                        btnPromote.text = if (isPromoted) "Desativar Promoção" else "Ativar Promoção (7 dias)"
                     }
                 }
                 .addOnFailureListener { e ->
-                    if (cachedDoctor == null) {
-                        Toast.makeText(this, "Erro ao carregar perfil: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
+                    android.util.Log.e("DoctorProfile", "❌ Erro ao carregar perfil", e)
                 }
         }
     }
-
-    private fun populateDoctorInfo(doctor: Doctor) {
-        doctorName = doctor.name
-        doctorPhotoUrl = doctor.photoUrl
-        
-        tvDoctorProfileName.text = doctor.name
-        tvDoctorProfileSpecialization.text = doctor.specialization
-        tvDoctorProfileAbout.text = "Descrição do doutor virá do Firestore." // Placeholder
-
-        if (doctor.photoUrl.isNotEmpty()) {
-            Glide.with(this)
-                .load(doctor.photoUrl)
-                .placeholder(R.drawable.ic_person)
-                .error(R.drawable.ic_person)
-                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
-                .into(ivDoctorProfilePhoto)
+    
+    private fun checkStripeStatus() {
+        if (!stripeConfigured) {
+            // Mostrar onboarding após 1 segundo
+            Handler(Looper.getMainLooper()).postDelayed({
+                showStripeOnboarding()
+            }, 1000)
         }
-        
-        hideSkeleton()
     }
     
-    private fun loadAvailability() {
+    private fun showStripeOnboarding() {
+        // Mostrar dialog de onboarding simplificado
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Configurar Recebimentos")
+            .setMessage(
+                "Para receber pagamentos, você precisa configurar uma conta Stripe Connect.\n\n" +
+                "1. Crie uma conta em https://dashboard.stripe.com\n" +
+                "2. Obtenha seu Account ID\n" +
+                "3. Configure aqui no app"
+            )
+            .setPositiveButton("Configurar Agora") { _, _ ->
+                showStripeConfigurationDialog()
+            }
+            .setNegativeButton("Depois", null)
+            .show()
+    }
+    
+    private fun showStripeConfigurationDialog() {
+        val dialog = StripeConfigurationDialog { accountId ->
+            saveStripeConfiguration(accountId)
+        }
+        dialog.show(supportFragmentManager, "StripeConfiguration")
+    }
+    
+    private fun saveStripeConfiguration(accountId: String) {
         doctorId?.let { id ->
-            android.util.Log.d("DoctorProfileActivity", "🔍 Loading availability for doctor: $id")
+            btnConfigureStripe.isEnabled = false
+            btnConfigureStripe.text = "Salvando..."
             
-            // Buscar todas as disponibilidades do doutor e filtrar localmente
-            firestore.collection("doctorAvailability")
-                .whereEqualTo("doctorId", id)
-                .get()
-                .addOnSuccessListener { querySnapshot ->
-                    val now = com.google.firebase.Timestamp.now()
-                    android.util.Log.d("DoctorProfileActivity", "✅ Found ${querySnapshot.size()} total availability slots")
-                    android.util.Log.d("DoctorProfileActivity", "⏰ Current time: ${now.toDate()}")
-                    android.util.Log.d("DoctorProfileActivity", "⏰ Current timestamp seconds: ${now.seconds}")
+            firestore.collection("doutores").document(id)
+                .update(
+                    mapOf(
+                        "stripeAccountId" to accountId,
+                        "stripeConfigured" to true,
+                        "onboardingCompleted" to true
+                    )
+                )
+                .addOnSuccessListener {
+                    stripeConfigured = true
+                    stripeAccountId = accountId
+                    updateStripeUI()
                     
-                    availabilitySlots.clear()
+                    // Carregar saldo automaticamente após salvar
+                    loadAccountBalance()
                     
-                    for (document in querySnapshot.documents) {
-                        try {
-                            val data = document.data
-                            if (data != null) {
-                                android.util.Log.d("DoctorProfileActivity", "   📄 Processing slot ${document.id}")
-                                android.util.Log.d("DoctorProfileActivity", "      Fields: ${data.keys}")
-                                
-                                val slot = AvailabilitySlot.fromMap(data, document.id)
-                                
-                                android.util.Log.d("DoctorProfileActivity", "      Slot: isBooked=${slot.isBooked}, isAvailable=${slot.isAvailable}")
-                                android.util.Log.d("DoctorProfileActivity", "      Date (consulta): ${slot.date?.toDate()}")
-                                android.util.Log.d("DoctorProfileActivity", "      StartTime (horário): ${slot.startTime?.toDate()}")
-                                
-                                // Usar o campo DATE para verificar se a consulta está no futuro
-                                // DATE = data da consulta, StartTime = horário específico
-                                val dateToCheck = slot.date ?: slot.startTime
-                                
-                                // Filtrar: não reservado, disponível e no futuro
-                                if (!slot.isBooked && slot.isAvailable && dateToCheck != null) {
-                                    val comparison = dateToCheck.compareTo(now)
-                                    val diffSeconds = dateToCheck.seconds - now.seconds
-                                    val diffHours = diffSeconds / 3600.0
-                                    
-                                    android.util.Log.d("DoctorProfileActivity", "      ⏰ Date comparison: $comparison (>0 = future)")
-                                    android.util.Log.d("DoctorProfileActivity", "      ⏰ Difference: $diffSeconds seconds (${String.format("%.2f", diffHours)} hours)")
-                                    
-                                    if (comparison > 0) {
-                                        availabilitySlots.add(slot)
-                                        android.util.Log.d("DoctorProfileActivity", "      ✅ Added to list (${String.format("%.2f", diffHours)} hours in future)")
-                                    } else {
-                                        android.util.Log.d("DoctorProfileActivity", "      ⏭️ Skipped - past date (${String.format("%.2f", Math.abs(diffHours))} hours ago)")
-                                    }
-                                } else {
-                                    val reason = when {
-                                        slot.isBooked -> "already booked"
-                                        !slot.isAvailable -> "not available (isAvailable=false)"
-                                        dateToCheck == null -> "no date or startTime"
-                                        else -> "unknown"
-                                    }
-                                    android.util.Log.d("DoctorProfileActivity", "      ⏭️ Skipped - $reason")
-                                }
-                            }
-                        } catch (e: Exception) {
-                            android.util.Log.e("DoctorProfileActivity", "❌ Error parsing availability slot ${document.id}", e)
-                            e.printStackTrace()
-                        }
-                    }
-                    
-                    // Ordenar manualmente por date/startTime (mais próximos primeiro)
-                    availabilitySlots.sortWith(compareBy(nullsLast()) { it.date ?: it.startTime })
-                    
-                    // Limitar a 10 mais próximos
-                    val limitedSlots = availabilitySlots.take(10)
-                    availabilitySlots.clear()
-                    availabilitySlots.addAll(limitedSlots)
-                    
-                    android.util.Log.d("DoctorProfileActivity", "✅ Final availability count: ${availabilitySlots.size}")
-                    
-                    // Atualizar UI
-                    availabilityAdapter.notifyDataSetChanged()
-                    
-                    if (availabilitySlots.isEmpty()) {
-                        android.util.Log.w("DoctorProfileActivity", "⚠️ No available slots found for this doctor")
-                        android.util.Log.w("DoctorProfileActivity", "   Possible reasons:")
-                        android.util.Log.w("DoctorProfileActivity", "   - All slots are in the past")
-                        android.util.Log.w("DoctorProfileActivity", "   - All slots are booked")
-                        android.util.Log.w("DoctorProfileActivity", "   - isAvailable field is false")
-                    }
+                    Toast.makeText(this, "Stripe configurado com sucesso!", Toast.LENGTH_SHORT).show()
                 }
                 .addOnFailureListener { e ->
-                    android.util.Log.e("DoctorProfileActivity", "❌ Error loading availability from Firestore", e)
-                    e.printStackTrace()
-                    Toast.makeText(this, "Erro ao carregar disponibilidade: ${e.message}", Toast.LENGTH_SHORT).show()
+                    android.util.Log.e("DoctorProfile", "❌ Erro ao salvar configuração Stripe", e)
+                    Toast.makeText(this, "Erro ao salvar configuração", Toast.LENGTH_SHORT).show()
                 }
-        } ?: run {
-            android.util.Log.e("DoctorProfileActivity", "❌ Doctor ID is null, cannot load availability")
+                .addOnCompleteListener {
+                    btnConfigureStripe.isEnabled = true
+                    btnConfigureStripe.text = "Configurar Stripe"
+                }
         }
     }
     
-    private fun loadReviews() {
-        doctorId?.let { id ->
-            // Buscar sem orderBy para evitar necessidade de índice composto
-            firestore.collection("avaliacoes")
-                .whereEqualTo("doctorId", id)
-                .get()
-                .addOnSuccessListener { querySnapshot ->
-                    reviews.clear()
-                    var totalRating = 0.0
+    private fun updateStripeUI() {
+        if (stripeConfigured) {
+            tvStripeStatus.text = "✓ Configurado"
+            tvStripeStatus.setTextColor(getColor(R.color.green))
+            btnConfigureStripe.text = "Alterar Configuração"
+            layoutBalance.visibility = View.VISIBLE
+        } else {
+            tvStripeStatus.text = "Não configurado"
+            tvStripeStatus.setTextColor(getColor(R.color.text_secondary))
+            btnConfigureStripe.text = "Configurar Recebimentos"
+            layoutBalance.visibility = View.GONE
+        }
+    }
+    
+    private fun loadAccountBalance() {
+        if (isLoadingBalance) return
+        
+        if (!stripeConfigured || stripeAccountId.isNullOrEmpty()) {
+            Toast.makeText(this, "Stripe não está configurado", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        isLoadingBalance = true
+        progressBalance.visibility = View.VISIBLE
+        btnUpdateBalance.isEnabled = false
+        
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val balance = stripeService.getAccountBalance(stripeAccountId!!)
+                
+                if (balance != null) {
+                    // Formatar saldo disponível
+                    val availableAmount = balance.available.firstOrNull()?.amount ?: 0
+                    val availableCurrency = balance.available.firstOrNull()?.currency ?: "eur"
+                    tvBalance.text = formatCurrency(availableAmount, availableCurrency)
                     
-                    for (document in querySnapshot.documents) {
-                        try {
-                            val data = document.data
-                            if (data != null) {
-                                val review = Review.fromMap(data)
-                                reviews.add(review)
-                                totalRating += review.rating
-                            }
-                        } catch (e: Exception) {
-                            android.util.Log.e("DoctorProfileActivity", "Error parsing review ${document.id}", e)
-                        }
-                    }
-                    
-                    // Ordenar manualmente por createdAt (mais recentes primeiro)
-                    reviews.sortWith(compareBy(nullsLast()) { it.createdAt })
-                    reviews.reverse() // Reverter para ter mais recentes primeiro (DESCENDING)
-                    
-                    // Limitar a 10 mais recentes/melhores
-                    val limitedReviews = reviews.take(10)
-                    reviews.clear()
-                    reviews.addAll(limitedReviews)
-                    
-                    // Calcular rating médio
-                    val allReviews = querySnapshot.documents.mapNotNull { doc ->
-                        try {
-                            Review.fromMap(doc.data ?: return@mapNotNull null)
-                        } catch (e: Exception) {
-                            null
-                        }
-                    }
-                    
-                    if (allReviews.isNotEmpty()) {
-                        val avgRating = allReviews.map { it.rating }.average()
-                        tvDoctorProfileRating.text = String.format(Locale.US, "%.1f (%d avaliações)", avgRating, allReviews.size)
+                    // Formatar saldo pendente
+                    val pendingAmount = balance.pending.firstOrNull()?.amount ?: 0
+                    val pendingCurrency = balance.pending.firstOrNull()?.currency ?: "eur"
+                    if (pendingAmount > 0) {
+                        tvPendingBalance.text = formatCurrency(pendingAmount, pendingCurrency)
+                        tvPendingBalance.visibility = View.VISIBLE
                     } else {
-                        tvDoctorProfileRating.text = "Nenhuma avaliação"
+                        tvPendingBalance.visibility = View.GONE
                     }
-                    
-                    reviewsAdapter.notifyDataSetChanged()
+                } else {
+                    Toast.makeText(this@DoctorProfileActivity, "Erro ao carregar saldo", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("DoctorProfile", "❌ Erro ao carregar saldo", e)
+                Toast.makeText(this@DoctorProfileActivity, "Erro ao carregar saldo: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isLoadingBalance = false
+                progressBalance.visibility = View.GONE
+                btnUpdateBalance.isEnabled = true
+            }
+        }
+    }
+    
+    private fun formatCurrency(amount: Int, currency: String): String {
+        // Converter de centavos para decimal
+        val decimalAmount = amount / 100.0
+        return currencyFormatter.format(decimalAmount)
+    }
+    
+    private fun updateOnlineStatus(isOnline: Boolean) {
+        doctorId?.let { id ->
+            firestore.collection("doutores").document(id)
+                .update("isOnline", isOnline)
+                .addOnSuccessListener {
+                    android.util.Log.d("DoctorProfile", "✅ Status online atualizado: $isOnline")
                 }
                 .addOnFailureListener { e ->
-                    android.util.Log.e("DoctorProfileActivity", "Error loading reviews", e)
-                    Toast.makeText(this, "Erro ao carregar avaliações: ${e.message}", Toast.LENGTH_SHORT).show()
+                    android.util.Log.e("DoctorProfile", "❌ Erro ao atualizar status", e)
+                    Toast.makeText(this, "Erro ao atualizar status", Toast.LENGTH_SHORT).show()
                 }
+        }
+    }
+    
+    private fun savePrice() {
+        val priceText = etPriceEurCents.text.toString()
+        val priceEur = priceText.toDoubleOrNull()
+        
+        if (priceEur == null || priceEur <= 0) {
+            Toast.makeText(this, "Preço inválido", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val priceEurCents = (priceEur * 100).toInt()
+        
+        doctorId?.let { id ->
+            firestore.collection("doutores").document(id)
+                .update("priceEurCents", priceEurCents)
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Preço salvo com sucesso", Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener { e ->
+                    android.util.Log.e("DoctorProfile", "❌ Erro ao salvar preço", e)
+                    Toast.makeText(this, "Erro ao salvar preço", Toast.LENGTH_SHORT).show()
+                }
+        }
+    }
+    
+    private fun activatePromotion() {
+        doctorId?.let { id ->
+            val docRef = firestore.collection("doutores").document(id)
+            
+            docRef.get().addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val isPromoted = (document.data?.get("isPromoted") as? Boolean) ?: false
+                    val calendar = java.util.Calendar.getInstance()
+                    calendar.add(java.util.Calendar.DAY_OF_YEAR, 7)
+                    val expiresAt = Timestamp(calendar.time)
+                    
+                    val updates = if (isPromoted) {
+                        mapOf(
+                            "isPromoted" to false,
+                            "promotionExpiresAt" to null
+                        )
+                    } else {
+                        mapOf(
+                            "isPromoted" to true,
+                            "promotionExpiresAt" to expiresAt
+                        )
+                    }
+                    
+                    docRef.update(updates)
+                        .addOnSuccessListener {
+                            val message = if (isPromoted) "Promoção desativada" else "Promoção ativada por 7 dias"
+                            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                            loadProfile()
+                        }
+                        .addOnFailureListener { e ->
+                            android.util.Log.e("DoctorProfile", "❌ Erro ao atualizar promoção", e)
+                            Toast.makeText(this, "Erro ao atualizar promoção", Toast.LENGTH_SHORT).show()
+                        }
+                }
+            }
         }
     }
 }

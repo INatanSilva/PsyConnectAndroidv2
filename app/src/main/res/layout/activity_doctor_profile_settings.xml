@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Back Button -->
+        <Button
+            android:id="@+id/btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="← Voltar ao Dashboard"
+            android:background="@drawable/bg_button"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Profile Image -->
+        <ImageView
+            android:id="@+id/ivProfileImage"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:src="@drawable/ic_person"
+            android:background="@drawable/bg_circle"
+            android:padding="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp"
+            android:contentDescription="Foto do perfil" />
+
+        <!-- Name -->
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Nome do Doutor"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Email -->
+        <TextView
+            android:id="@+id/tvEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="email@example.com"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Section: Informações Profissionais -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Informações Profissionais"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Online Status -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Disponível para Consultas"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+
+            <Switch
+                android:id="@+id/switchIsOnline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <!-- Section: Financeiro -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Financeiro"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Price -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Preço da Consulta (EUR)"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+        <EditText
+            android:id="@+id/etPriceEurCents"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="50.00"
+            android:inputType="numberDecimal"
+            android:background="@drawable/bg_message_input"
+            android:padding="12dp"
+            android:layout_marginBottom="8dp" />
+        <Button
+            android:id="@+id/btnSavePrice"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Salvar Preço"
+            android:background="@drawable/bg_button_pressed"
+            android:textColor="@color/white"
+            android:layout_gravity="end"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Stripe Status -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Status Stripe:"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+        <TextView
+            android:id="@+id/tvStripeStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Não configurado"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp" />
+        <Button
+            android:id="@+id/btnConfigureStripe"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Configurar Stripe"
+            android:background="@drawable/bg_button"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Balance Section (only visible if Stripe is configured) -->
+        <LinearLayout
+            android:id="@+id/layoutBalance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saldo da Conta"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saldo Disponível:"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:layout_marginBottom="8dp" />
+            <TextView
+                android:id="@+id/tvBalance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="€0,00"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saldo Pendente:"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:layout_marginBottom="8dp" />
+            <TextView
+                android:id="@+id/tvPendingBalance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="€0,00"
+                android:textColor="#FF9800"
+                android:textSize="16sp"
+                android:layout_marginBottom="16dp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <ProgressBar
+                    android:id="@+id/progressBalance"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:visibility="gone"
+                    android:layout_marginEnd="8dp" />
+
+                <Button
+                    android:id="@+id/btnUpdateBalance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Atualizar Saldo"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_primary" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Promotion -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Promoção"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+        <Button
+            android:id="@+id/btnPromote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ativar Promoção (7 dias)"
+            android:background="@drawable/bg_button_pressed"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:padding="16dp" />
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>
+
